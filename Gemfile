@@ -6,10 +6,11 @@ gem 'rails', '3.0.3'
 # gem 'rails', :git => 'git://github.com/rails/rails.git'
 
 gem 'sqlite3-ruby', :require => 'sqlite3'
-
+gem 'mysql', :require =>'mysql'
+#gem 'simple_groups', :git=> 'git://github.com/JonMidhir/simple_groups.git'
 # Use unicorn as the web server
 # gem 'unicorn'
-
+#gem 'rails3-generators'
 # Deploy with Capistrano
 # gem 'capistrano'
 

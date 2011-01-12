@@ -13,6 +13,22 @@ Sms::Application.routes.draw do
   # Sample resource route (maps HTTP verbs to controller actions automatically):
   #   resources :products
 
+  match '/show_contact_admin' => 'users#show_contact_admin', :as => :show_contact_admin
+
+  resources :users do
+    member do 
+      get 'sms_admin'
+      #get 'incoming_message'
+    end
+  end
+  
+  resources :sms do
+    member do 
+      #get 'sms_admin'
+      get 'incoming_message'
+    end
+  end
+
   # Sample resource route with options:
   #   resources :products do
   #     member do
