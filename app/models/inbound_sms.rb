@@ -6,28 +6,51 @@ class InboundSms < ActiveRecord::Base
   class << self
     
     def parse_incoming_sms(from, message)
-      token = InboundSms.parse_token(message)      
-      unless token.nil?        
-        detokenized_message = InboundSms.detokenize_message(token, message)
-        source_message = OutboundSms.find_source_by_token(token)
-        unless source_message.nil?
-          inbound_sms = InboundSms.new(:source=>from, :message=>detokenized_message, :token=>token, :intended_to=>source_message.from, :thread_source=>source_message)
-          inbound_sms.save
-          inbound_sms.broadcast_to_target
-        end
+      #user = User.find_by_mobile_no(from)
+      action_keyword = parse_action(message)
+      action = Action.find_by_keyword(action_keyword)
+      group_title = parse_group(message)
+      case action.name
+        when "LIST"
+          list(from,group_title)
+          
       end
-#      unless User.get_if_admin(from).nil?
-#        
-#      end
     end
     
-    def parse_token(message)
+  def parse_action(message)
+    message.split(" ")[0]
+  end
+  
+  def parse_group(message)
     message.split(" ")[1]
   end
   
   def detokenize_message(token, message)
     message.split(token)[1]
   end
+   
+  def list(from,group_title)
+    user = User.exists?(from)
+    unless user.nil?
+        group=Group.exists?(group_title)
+         unless group.nil?
+          list = group.get_list(user)
+          if list.nil? or list.empty? 
+            message = "No users Found in your group #{group.title}" 
+          elsif list==false
+            message = "Access denied for this group #{group.title}" 
+          else
+            message = "Users in #{group.title} group #{list}"
+          end
+        else
+          message = "Group #{group_title} not exists"
+        end
+    else
+      message = "Access denied for this group #{group_title}" 
+    end
+    outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => user.mobile, :message => message)
+    outbound_sms.queue_sms 
+  end  
     
   end
   

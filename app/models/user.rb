@@ -6,6 +6,10 @@ class User < ActiveRecord::Base
   
  class << self
    
+   def exists?(mobile)
+     find_by_mobile_no(mobile)
+   end
+   
    def get_if_admin(mobile_no)
      User.find_by_admin_role(true, :conditions => ["mobile_no = ?", mobile_no])
    end

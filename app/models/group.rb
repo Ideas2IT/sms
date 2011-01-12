@@ -74,4 +74,8 @@ class Group < ActiveRecord::Base
     end
     OutboundSms.queue_bulk(outbounds_sms)
   end
+ 
+  def get_list(user)
+    self.has_member?(user) ? self.members.remove(user).collect{|user| user.mobile_no}.join(',').to_s : false 
+  end
 end
