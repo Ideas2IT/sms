@@ -6,6 +6,7 @@ class CreateInboundSms < ActiveRecord::Migration
       t.string :token
       t.string :intended_to, :null => false, :default => "system"
       t.integer :thread_source_id
+      t.integer :action_id
       t.timestamps
     end
   end

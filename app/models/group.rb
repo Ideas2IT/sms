@@ -4,6 +4,7 @@ class Group < ActiveRecord::Base
   has_many :members, :through => :memberships, :source => :user, :conditions => 'accepted_at IS NOT NULL'
   has_many :pending_members, :through => :memberships, :source => :user, :conditions => 'accepted_at IS NULL'
   has_many :mods, :through => :memberships, :source => :user, :conditions => ['admin_role = ?', true]
+  has_many :inbound_sms, :outbound_sms
   
   def membership(user)
     Membership.find(:first, :conditions => ['group_id = ? AND user_id = ?', self.id, user.id])

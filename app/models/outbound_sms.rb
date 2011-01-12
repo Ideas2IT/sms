@@ -1,6 +1,8 @@
 class OutboundSms < ActiveRecord::Base
   belongs_to :thread_source, :class_name => "InboundSms",
                          :foreign_key => "thread_source_id"
+                         
+  belongs_to :group, :action
   class << self
     
    def find_source_by_token(token)

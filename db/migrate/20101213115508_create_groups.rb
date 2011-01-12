@@ -11,6 +11,7 @@ class CreateGroups < ActiveRecord::Migration
       t.integer :group_id, :null => false
       t.datetime :accepted_at
       t.boolean :admin_role, :default => false
+      t.boolean :muted, :default => false
       t.timestamps
     end
   end

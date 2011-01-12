@@ -1,6 +1,8 @@
 class InboundSms < ActiveRecord::Base
   belongs_to :thread_source, :class_name => "OutboundSms",
                          :foreign_key => "thread_source_id"
+                         
+  belongs_to :group, :action
   class << self
     
     def parse_incoming_sms(from, message)
