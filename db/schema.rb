@@ -12,6 +12,7 @@
 
 ActiveRecord::Schema.define(:version => 20110112093446) do
 
+
   create_table "actions", :force => true do |t|
     t.string   "name",        :null => false
     t.string   "description"
@@ -93,6 +94,7 @@ ActiveRecord::Schema.define(:version => 20110112093446) do
     t.boolean  "muted",       :default => false
     t.datetime "created_at"
     t.datetime "updated_at"
+    t.boolean  "mute",        :default => false
   end
 
   create_table "outbound_sms", :force => true do |t|

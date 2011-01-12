@@ -22,6 +22,10 @@ class InboundSms < ActiveRecord::Base
           unsubscribe(from, group_title)
         when "REMOVE"
           remove(from, group_title)
+        when "MUTE"
+          mute(from,group_title)
+        when "REJOIN"
+          rejoin(from,group_title) 
       end
     end
     
@@ -39,8 +43,8 @@ class InboundSms < ActiveRecord::Base
   
   def detokenize_message(token, message)
     message.split(token)[1]
-  end
-  
+  end  
+
   def add_user_to_group(from, group_title, numbers)
     mobile_nos = numbers.split(",")
     group = Group.exists?(group_title)    
@@ -92,8 +96,54 @@ class InboundSms < ActiveRecord::Base
       outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => user.mobile, :message => message)
       outbound_sms.queue_sms
     end
+  end   
+
+  def mute(from,group_title)
+    user = User.exists?(from)
+    unless user.nil?
+        group=Group.exists?(group_title)
+         unless group.nil?
+          if group.has_member?(user)
+            membership = Membership.find(:first,:conditions=>['user_id = ? and group_id = ?',user.id,group.id])
+            membership.mute = true
+            membership.save!
+            message = "Successfully muted for the group #{group_title}"
+          else
+            message = "Access denied for this group #{group_title}" 
+          end
+        else
+          message = "Group #{group_title} not exists"
+        end
+    else
+      message = "Access denied for this group #{group_title}" 
+    end
+    outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => user.mobile, :message => message)
+    outbound_sms.queue_sms     
   end
-   
+ 
+  def rejoin(from,group_title)
+    user = User.exists?(from)
+    unless user.nil?
+        group=Group.exists?(group_title)
+         unless group.nil?
+          if group.has_member?(user)
+            membership = Membership.find(:first,:conditions=>['user_id = ? and group_id = ?',user.id,group.id])
+            membership.mute = false
+            membership.save!
+            message = "Successfully unmuted for the group #{group_title}"
+          else
+            message = "Access denied for this group #{group_title}" 
+          end
+        else
+          message = "Group #{group_title} not exists"
+        end
+    else
+      message = "Access denied for this group #{group_title}" 
+    end
+    outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => user.mobile, :message => message)
+    outbound_sms.queue_sms     
+  end     
+
   def list(from,group_title)
     user = User.exists?(from)
     unless user.nil?
