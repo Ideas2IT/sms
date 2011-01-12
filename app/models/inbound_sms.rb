@@ -7,8 +7,7 @@ class InboundSms < ActiveRecord::Base
     
     def parse_incoming_sms(from, message)
       token = InboundSms.parse_token(message)      
-      unless token.nil?
-        puts "token......"
+      unless token.nil?        
         detokenized_message = InboundSms.detokenize_message(token, message)
         source_message = OutboundSms.find_source_by_token(token)
         unless source_message.nil?

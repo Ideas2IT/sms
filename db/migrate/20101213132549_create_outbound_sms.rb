@@ -7,6 +7,7 @@ class CreateOutboundSms < ActiveRecord::Migration
       t.string :token, :null => false
       t.boolean :gateway_delivered, :default => false
       t.integer :thread_source_id
+      t.integer :group_id
       t.timestamps
     end
   end

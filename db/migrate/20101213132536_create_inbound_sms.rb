@@ -7,6 +7,8 @@ class CreateInboundSms < ActiveRecord::Migration
       t.string :intended_to, :null => false, :default => "system"
       t.integer :thread_source_id
       t.integer :action_id
+      t.integer :user_id
+      t.integer :group_id
       t.timestamps
     end
   end

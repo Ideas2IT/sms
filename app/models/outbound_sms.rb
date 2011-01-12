@@ -2,7 +2,7 @@ class OutboundSms < ActiveRecord::Base
   belongs_to :thread_source, :class_name => "InboundSms",
                          :foreign_key => "thread_source_id"
                          
-  belongs_to :group, :action
+  belongs_to :group
   class << self
     
    def find_source_by_token(token)
@@ -18,6 +18,12 @@ class OutboundSms < ActiveRecord::Base
        tokenized_message = tokenize_message(token, message)
        outbound_sms = OutboundSms.new(:from => mobile_no, :to => admin_no, :token => token, :message => tokenized_message)
        outbound_sms.queue_sms    
+     end
+     
+     def queue_bulk(outbounds_sms)
+       outbounds_sms.each do |outbound_sms|
+         outbound_sms.queue_sms
+       end
      end
    end    
     
