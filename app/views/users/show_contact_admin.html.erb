@@ -1,0 +1,31 @@
+<%if company_valid(params[:token])%>
+	<%= text_field_tag :mobile_no%><br />
+	<%= text_field_tag :message%><br />
+	<input type="hidden" name="token" id="token" value="<%=params[:token]%>" />
+	<div id="status"></div>
+	<input type="button" value="Sms" onclick="sms_admin();" />
+<script type="text/javascript">
+	function sms_admin(){
+		alert("called");
+		var mobile_no = document.getElementById("mobile_no").value.strip();
+		var message = document.getElementById("message").value.strip();
+		var token = document.getElementById("token").value.strip();
+		if (mobile_no == "" || message == "") {
+			document.getElementById("status").innerHTML = "Enter valid mobile and message";
+		}
+		else {		
+		new Ajax.Request('http://localhost:3000/users/' + token + '/sms_admin?mobile_no=' + mobile_no + '&message=' + message, {
+			asynchronous: true,
+			evalScripts: true,
+			method: 'get',
+			onComplete: function(request){
+				document.getElementById("status").innerHTML=request.responseText;
+			}
+		});
+	}
+	}
+
+</script>
+<%else%>
+Invalid Token
+<%end%>
