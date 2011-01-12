@@ -2,7 +2,9 @@ class User < ActiveRecord::Base
   include_simple_groups
   belongs_to :company
   
-  named_scope :admin, :conditions => ["admin_role = ?", true] 
+  named_scope :admin, :conditions => ["admin_role = ?", true]
+  
+  named_scope :system_user, :conditions => ["id = ?", 1]
   
  class << self
    
@@ -12,6 +14,14 @@ class User < ActiveRecord::Base
    
    def get_if_admin(mobile_no)
      User.find_by_admin_role(true, :conditions => ["mobile_no = ?", mobile_no])
+   end
+   
+   def form_users(mobile_nos)
+     users = []
+     mobile_nos.each do |mobile_no|
+       users << form_user(mobile_no)
+     end
+     users
    end
    
    def form_user(mobile_no)

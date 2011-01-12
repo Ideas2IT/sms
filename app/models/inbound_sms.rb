@@ -10,13 +10,22 @@ class InboundSms < ActiveRecord::Base
       action_keyword = parse_action(message)
       action = Action.find_by_keyword(action_keyword)
       group_title = parse_group(message)
+      data = parse_data(message)
       case action.name
-        when "LIST"
+        when "LIST_ALL_USERS"
           list(from,group_title)
+        when "ADD_USER_TO_GROUP_FROM_ADMIN"
+          add_user_to_group(from, group_title, data)
+        when "SEND_MESSAGE_TO_GROUP"
+          send_message_to_group(from, group_title, data)
+        when "UNSUBSCRIBE"
+          unsubscribe(from, group_title)
+        when "REMOVE"
+          remove(from, group_title)
         when "MUTE"
           mute(from,group_title)
         when "REJOIN"
-          rejoin(from,group_title)  
+          rejoin(from,group_title) 
       end
     end
     
@@ -28,10 +37,67 @@ class InboundSms < ActiveRecord::Base
     message.split(" ")[1]
   end
   
-  def detokenize_message(token, message)
-    message.split(token)[1]
+  def parse_data(message)
+    message.split(" ")[2]
   end
   
+  def detokenize_message(token, message)
+    message.split(token)[1]
+  end  
+
+  def add_user_to_group(from, group_title, numbers)
+    mobile_nos = numbers.split(",")
+    group = Group.exists?(group_title)    
+    user = User.form_user(from)
+    members = User.form_users(mobile_nos)
+    message = "#{from} has added you to the group #{group_title}"
+    if !group.nil? and group.has_admin?(user)
+      group.add_members(members)
+      group.send_message(message, User.system_user, members)
+    elsif group.nil?
+      group = Group.create_group_for_user(user, group_title, members)
+      group.send_message(message, User.system_user, members)
+    end    
+  end
+  
+  def send_message_to_group(from, group_title, message)
+    group = Group.exists?(group_title)
+    user = User.exists?(from)
+    if !user.nil? and !group.nil?
+      group.send_message(message, user)
+    else      
+      message = user.nil? ? "You are not registered with us" : "Invalid Group"
+      outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => user.mobile, :message => message)
+      outbound_sms.queue_sms
+    end
+  end
+  
+  def unsubscribe(from, group_title)
+    group = Group.exists?(group_title)
+    user = User.exists?(from)
+    if !user.nil? and !group.nil?
+      group.kick(user) if group.has_member?(user)
+    else      
+      message = user.nil? ? "You are not registered with us" : "Invalid Group"
+      outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => user.mobile, :message => message)
+      outbound_sms.queue_sms
+    end
+  end
+  
+  def remove(from, group_title, number)
+    group = Group.exists?(group_title)
+    admin = User.exists?(from)
+    user = User.exists?(number)
+    is_admin = group.has_admin?(admin)
+    if !admin.nil? and !group.nil? and !user.nil?
+      group.kick(user) if group.has_member?(user) and is_admin
+    else      
+      message = (user.nil? or is_admin==false) ? "You are not a valid admin to do this" : "Invalid Group"
+      outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => user.mobile, :message => message)
+      outbound_sms.queue_sms
+    end
+  end   
+
   def mute(from,group_title)
     user = User.exists?(from)
     unless user.nil?
@@ -76,9 +142,8 @@ class InboundSms < ActiveRecord::Base
     end
     outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => user.mobile, :message => message)
     outbound_sms.queue_sms     
-  end
-     
-     
+  end     
+
   def list(from,group_title)
     user = User.exists?(from)
     unless user.nil?

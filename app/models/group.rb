@@ -9,18 +9,33 @@ class Group < ActiveRecord::Base
   has_many :outbound_sms
   
   class << self
+    
     def exists?(name)
       find_by_title(name)
+    end
+    
+    def create_group(name)
+      group = Group.new(:title=>name, :company=>Thread.current[:current_company])
+      group.save
+      group
+    end
+    
+    def create_group_for_user(admin, name, members)
+      group = Group.new(:title=>name, :company=>Thread.current[:current_company])
+      group.mods.build(admin)
+      group.save
+      group.add_members(members)
+      group
     end
     
     def create_if_not_exists(name)
       group =  exists?(name)
       if group.nil?
-        group = Group.new(:title=>name, :company=>1)
-        group.save
+        group = create_group(name)
       end
       group
     end
+    
   end
   
   def membership(user)
@@ -55,6 +70,10 @@ class Group < ActiveRecord::Base
     self.members.include?(user)
   end
   
+  def has_admin?(user)
+    self.mods.include?(user)
+  end
+  
   def add_members(users)
     users.each do |user|
       self.add_member(user)
@@ -66,14 +85,17 @@ class Group < ActiveRecord::Base
     membership.save
   end
   
-  def send_message(message, from)
+  def send_message(message, from, members=nil)
     outbounds_sms = []
-    self.active_members.each do |active_member|
-      outbound_sms = OutboundSms.new(:from=>from.mobile_no, :to=>active_member.mobile_no, :message=>message, :group=>self)
+    if members.nil?
+      members = self.active_members
+    end
+    members.each do |member|
+      outbound_sms = OutboundSms.new(:from=>from.mobile_no, :to=>member.mobile_no, :message=>message, :group=>self)
       outbounds_sms << outbound_sms
     end
     OutboundSms.queue_bulk(outbounds_sms)
-  end
+  end  
  
   def get_list(user)
     self.has_member?(user) ? self.members.remove(user).collect{|user| user.mobile_no}.join(',').to_s : false 
