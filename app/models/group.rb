@@ -3,8 +3,8 @@ class Group < ActiveRecord::Base
   has_many :memberships
   has_many :members, :through => :memberships, :source => :user, :conditions => 'accepted_at IS NOT NULL'
   has_many :pending_members, :through => :memberships, :source => :user, :conditions => 'accepted_at IS NULL'
-  has_many :active_members, :through => :memberships, :source => :user, :conditions => ['muted = ?', false]
-  has_many :mods, :through => :memberships, :source => :user, :conditions => ['admin_role = ?', true]
+  has_many :active_members, :through => :memberships, :source => :user, :conditions => ['mute = ?', false]
+  has_many :mods, :through => :memberships, :source => :user, :conditions => "memberships.admin_role = #{true}"
   has_many :inbound_sms 
   has_many :outbound_sms
   
@@ -98,6 +98,6 @@ class Group < ActiveRecord::Base
   end  
  
   def get_list(user)
-    self.has_member?(user) ? self.members.remove(user).collect{|user| user.mobile_no}.join(',').to_s : false 
+    self.has_member?(user) ? self.members.collect{|user| user.mobile_no}.join(',').to_s : false 
   end
 end

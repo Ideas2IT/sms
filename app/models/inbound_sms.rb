@@ -2,7 +2,8 @@ class InboundSms < ActiveRecord::Base
   belongs_to :thread_source, :class_name => "OutboundSms",
                          :foreign_key => "thread_source_id"
                          
-  belongs_to :group, :action
+  belongs_to :group 
+  belongs_to :action
   class << self
     
     def parse_incoming_sms(from, message)
@@ -21,7 +22,7 @@ class InboundSms < ActiveRecord::Base
         when "UNSUBSCRIBE"
           unsubscribe(from, group_title)
         when "REMOVE"
-          remove(from, group_title)
+          remove(from, group_title, data)
         when "MUTE"
           mute(from,group_title)
         when "REJOIN"
@@ -30,11 +31,11 @@ class InboundSms < ActiveRecord::Base
     end
     
   def parse_action(message)
-    message.split(" ")[0]
+    message.split(" ")[0].downcase
   end
   
   def parse_group(message)
-    message.split(" ")[1]
+    message.split(" ")[1].downcase
   end
   
   def parse_data(message)
@@ -67,7 +68,7 @@ class InboundSms < ActiveRecord::Base
       group.send_message(message, user)
     else      
       message = user.nil? ? "You are not registered with us" : "Invalid Group"
-      outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => user.mobile, :message => message)
+      outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => from, :message => message)
       outbound_sms.queue_sms
     end
   end
@@ -76,12 +77,18 @@ class InboundSms < ActiveRecord::Base
     group = Group.exists?(group_title)
     user = User.exists?(from)
     if !user.nil? and !group.nil?
-      group.kick(user) if group.has_member?(user)
+      if group.has_member?(user)
+        group.kick(user)
+        message="You are successfully removed from the group #{group.title}"
+      else
+        message = "You are not a member to do so"
+      end
     else      
       message = user.nil? ? "You are not registered with us" : "Invalid Group"
-      outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => user.mobile, :message => message)
-      outbound_sms.queue_sms
+      
     end
+    outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => from, :message => message)
+    outbound_sms.queue_sms
   end
   
   def remove(from, group_title, number)
@@ -92,8 +99,8 @@ class InboundSms < ActiveRecord::Base
     if !admin.nil? and !group.nil? and !user.nil?
       group.kick(user) if group.has_member?(user) and is_admin
     else      
-      message = (user.nil? or is_admin==false) ? "You are not a valid admin to do this" : "Invalid Group"
-      outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => user.mobile, :message => message)
+      message = (user.nil? or is_admin==false) ? "You are not a valid admin for th egroup or the user does not exist" : "Invalid Group"
+      outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => from, :message => message)
       outbound_sms.queue_sms
     end
   end   
@@ -117,7 +124,7 @@ class InboundSms < ActiveRecord::Base
     else
       message = "Access denied for this group #{group_title}" 
     end
-    outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => user.mobile, :message => message)
+    outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => from, :message => message)
     outbound_sms.queue_sms     
   end
  
@@ -140,7 +147,7 @@ class InboundSms < ActiveRecord::Base
     else
       message = "Access denied for this group #{group_title}" 
     end
-    outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => user.mobile, :message => message)
+    outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => from, :message => message)
     outbound_sms.queue_sms     
   end     
 
@@ -150,7 +157,7 @@ class InboundSms < ActiveRecord::Base
         group=Group.exists?(group_title)
          unless group.nil?
           list = group.get_list(user)
-          if list.nil? or list.empty? 
+          if list.nil?
             message = "No users Found in your group #{group.title}" 
           elsif list==false
             message = "Access denied for this group #{group.title}" 
@@ -163,7 +170,7 @@ class InboundSms < ActiveRecord::Base
     else
       message = "Access denied for this group #{group_title}" 
     end
-    outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => user.mobile, :message => message)
+    outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => user.mobile_no, :message => message)
     outbound_sms.queue_sms 
   end  
     

@@ -8,23 +8,22 @@ class OutboundSms < ActiveRecord::Base
    def find_source_by_token(token)
      find_by_token(token)
    end
+   
+   def queue_bulk(outbounds_sms)
+       outbounds_sms.each do |outbound_sms|
+         outbound_sms.queue_sms
+       end
+     end
     
    def contact_admin(mobile_no, message)
      unless User.form_user(mobile_no).nil?
        current_company = Thread.current[:current_company]
-       puts "admin.......#{current_company.id}"
        admin_no = (current_company.admin_user).mobile_no
        token = generate_token
        tokenized_message = tokenize_message(token, message)
        outbound_sms = OutboundSms.new(:from => mobile_no, :to => admin_no, :token => token, :message => tokenized_message)
        outbound_sms.queue_sms    
-     end
-     
-     def queue_bulk(outbounds_sms)
-       outbounds_sms.each do |outbound_sms|
-         outbound_sms.queue_sms
-       end
-     end
+     end     
    end    
     
     def generate_token

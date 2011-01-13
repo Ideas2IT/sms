@@ -1,13 +1,16 @@
 class User < ActiveRecord::Base
   include_simple_groups
   belongs_to :company
-  
+  has_many :groups, :through => :memberships, :conditions => 'accepted_at IS NOT NULL'
   named_scope :admin, :conditions => ["admin_role = ?", true]
   
-  named_scope :system_user, :conditions => ["id = ?", 1]
+  #named_scope :system_user, :conditions => ["id = ?", 1]
   
  class << self
    
+   def system_user
+     find(1)
+   end
    def exists?(mobile)
      find_by_mobile_no(mobile)
    end
@@ -36,6 +39,10 @@ class User < ActiveRecord::Base
      end     
    end
    
+ end
+ 
+ def is_member_of?(group)
+    self.groups.include?(group)
  end
   
 end
