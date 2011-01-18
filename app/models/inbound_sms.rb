@@ -53,11 +53,16 @@ class InboundSms < ActiveRecord::Base
     members = User.form_users(mobile_nos)
     message = "#{from} has added you to the group #{group_title}"
     if !group.nil? and group.has_admin?(user)
+      puts "coming"
+      members = group.get_non_existing_members(members)
       group.add_members(members)
       group.send_message(message, User.system_user, members)
     elsif group.nil?
+      puts "coming elsif"
       group = Group.create_group_for_user(user, group_title, members)
       group.send_message(message, User.system_user, members)
+    else
+      puts "coming else #{group.nil?}--------#{group.has_admin?(user)} ===========>"
     end    
   end
   
@@ -97,7 +102,7 @@ class InboundSms < ActiveRecord::Base
     user = User.exists?(number)
     is_admin = group.has_admin?(admin)
     if !admin.nil? and !group.nil? and !user.nil?
-      group.kick(user) if group.has_member?(user) and is_admin
+      group.kick(user) #if is_admin
     else      
       message = (user.nil? or is_admin==false) ? "You are not a valid admin for th egroup or the user does not exist" : "Invalid Group"
       outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => from, :message => message)
@@ -112,6 +117,7 @@ class InboundSms < ActiveRecord::Base
          unless group.nil?
           if group.has_member?(user)
             membership = Membership.find(:first,:conditions=>['user_id = ? and group_id = ?',user.id,group.id])
+            puts "mure...#{membership.inspect}"
             membership.mute = true
             membership.save!
             message = "Successfully muted for the group #{group_title}"

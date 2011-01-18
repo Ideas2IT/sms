@@ -4,7 +4,7 @@ class Group < ActiveRecord::Base
   has_many :members, :through => :memberships, :source => :user, :conditions => 'accepted_at IS NOT NULL'
   has_many :pending_members, :through => :memberships, :source => :user, :conditions => 'accepted_at IS NULL'
   has_many :active_members, :through => :memberships, :source => :user, :conditions => ['mute = ?', false]
-  has_many :mods, :through => :memberships, :source => :user, :conditions => "memberships.admin_role = #{true}"
+  has_many :mods, :through => :memberships, :source => :user, :conditions => ["admin_role = ?",true]
   has_many :inbound_sms 
   has_many :outbound_sms
   
@@ -21,9 +21,9 @@ class Group < ActiveRecord::Base
     end
     
     def create_group_for_user(admin, name, members)
-      group = Group.new(:title=>name, :company=>Thread.current[:current_company])
-      group.mods.build(admin)
-      group.save
+      group = Group.new(:title=>name, :company=>Thread.current[:current_company])      
+      group.save!
+      group.add_admin(admin)
       group.add_members(members)
       group
     end
@@ -51,7 +51,7 @@ class Group < ActiveRecord::Base
   end
   
   def kick(user)
-    self.membership(user).destroy if user.is_member_of?(self)
+    self.membership(user).destroy #if user.is_member_of?(self)
   end
   
   def mods_online
@@ -67,10 +67,12 @@ class Group < ActiveRecord::Base
   end
   
   def has_member?(user)
+    puts "#{self.members.inspect}"
     self.members.include?(user)
   end
   
   def has_admin?(user)
+    puts "#{self.mods.inspect}-------------->"
     self.mods.include?(user)
   end
   
@@ -81,7 +83,12 @@ class Group < ActiveRecord::Base
   end
   
   def add_member(user)
-    membership = Membership.new(:group=>self, :user=>user)
+    membership = Membership.new(:group=>self, :user=>user,:accepted_at=>Time.now)
+    membership.save
+  end
+  
+  def add_admin(user)
+    membership = Membership.new(:group=>self, :user=>user, :admin_role=>true,:accepted_at=>Time.now)
     membership.save
   end
   
@@ -97,7 +104,18 @@ class Group < ActiveRecord::Base
     OutboundSms.queue_bulk(outbounds_sms)
   end  
  
+   def get_non_existing_members(members)
+     group_members = self.members
+     group_members.each do |group_member|
+       if members.include?(group_member)
+         members.remove(group_member)
+       end
+     end
+     members
+   end
+ 
   def get_list(user)
+    puts "list......#{self.has_member?(user)}"
     self.has_member?(user) ? self.members.collect{|user| user.mobile_no}.join(',').to_s : false 
   end
 end
