@@ -2,7 +2,9 @@ class User < ActiveRecord::Base
   include_simple_groups
   belongs_to :company
   has_many :groups, :through => :memberships, :conditions => 'accepted_at IS NOT NULL'
-  named_scope :admin, :conditions => ["admin_role = ?", true]
+  validates_numericality_of :mobile_no, :message => "Phone No. must be numerals"
+      validates_length_of :mobile_no, :is=>10, :message => "is invalid"
+  #named_scope :admin, :conditions => ["admin_role = ?", true]
   
   #named_scope :system_user, :conditions => ["id = ?", 1]
   
@@ -24,6 +26,7 @@ class User < ActiveRecord::Base
      mobile_nos.each do |mobile_no|
        users << form_user(mobile_no)
      end
+     puts "users....#{users.inspect}"
      users
    end
    
@@ -31,18 +34,43 @@ class User < ActiveRecord::Base
      user = User.find_by_mobile_no(mobile_no, :conditions => ['company_id = ?', Thread.current[:current_company].id])
      if user.nil?
        user = User.new(:mobile_no => mobile_no, :company=>Thread.current[:current_company])
-       if user.save
-         return user
+       begin
+         user.save!
+         #return user
+       rescue Exception => e
+         puts "in exception........#{e.message}"
+         err =  mobile_no
        end
      else
-       return user
-     end     
+       #return user
+     end
+     return {:user=>user, :err=>err}
+   end
+   
+   def slice_invalid_users(users)
+     members = []
+     invalid_members = []
+     users.each do |user|
+       if user[:err].nil?
+         members<<user[:user]
+       else
+         invalid_members<<user[:err]
+       end
+     end
+     return members, invalid_members
    end
    
  end
  
  def is_member_of?(group)
     self.groups.include?(group)
+ end
+ 
+ def intimate_invalid_members(invalid_members)
+   invalid_numbers = invalid_members.join(",").to_s
+   message = "The numbers you provided #{invalid_numbers} are invalid"
+   outbound_sms = OutboundSms.new(:from=>User.system_user.mobile_no, :to=>self.mobile_no, :message=>message)
+   outbound_sms.queue_sms
  end
   
 end

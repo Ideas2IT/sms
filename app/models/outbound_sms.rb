@@ -3,7 +3,14 @@ class OutboundSms < ActiveRecord::Base
                          :foreign_key => "thread_source_id"
                          
   belongs_to :group
+  INVALID_FORMAT = "Please specify a proper message format"
   class << self
+    
+    def invalid_format(mobile_no)
+      message = ""
+      outbound_sms = OutboundSms.new(:from => User.system_user.mobile_no, :to => mobile_no,:message => INVALID_FORMAT)
+      outbound_sms.queue_sms
+    end
     
    def find_source_by_token(token)
      find_by_token(token)

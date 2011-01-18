@@ -4,7 +4,7 @@ class Group < ActiveRecord::Base
   has_many :members, :through => :memberships, :source => :user, :conditions => 'accepted_at IS NOT NULL'
   has_many :pending_members, :through => :memberships, :source => :user, :conditions => 'accepted_at IS NULL'
   has_many :active_members, :through => :memberships, :source => :user, :conditions => ['mute = ?', false]
-  has_many :mods, :through => :memberships, :source => :user, :conditions => ["admin_role = ?",true]
+  has_many :mods, :through => :memberships, :source => :user, :conditions => "admin_role = 1"
   has_many :inbound_sms 
   has_many :outbound_sms
   
@@ -34,8 +34,7 @@ class Group < ActiveRecord::Base
         group = create_group(name)
       end
       group
-    end
-    
+    end    
   end
   
   def membership(user)
@@ -66,14 +65,20 @@ class Group < ActiveRecord::Base
     self.members - self.members_online
   end
   
-  def has_member?(user)
-    puts "#{self.members.inspect}"
-    self.members.include?(user)
+  def has_member?(user)    
+    self.members.to_ary.include?(user)
   end
   
-  def has_admin?(user)
-    puts "#{self.mods.inspect}-------------->"
-    self.mods.include?(user)
+  def has_admin?(user)    
+    self.mods.to_ary.include?(user)
+  end
+  
+  def active_membership(user)
+    user.nil? ? nil : Membership.find(:first, :conditions => ['group_id = ? AND user_id = ? AND mute = ?', self.id, user.id, false])
+  end
+  
+  def muted_membership(user)
+    user.nil? ? nil : Membership.find(:first, :conditions => ['group_id = ? AND user_id = ? AND mute = ?', self.id, user.id, true])
   end
   
   def add_members(users)
@@ -95,7 +100,8 @@ class Group < ActiveRecord::Base
   def send_message(message, from, members=nil)
     outbounds_sms = []
     if members.nil?
-      members = self.active_members
+      members = self.active_members.to_ary
+      members.delete(from)
     end
     members.each do |member|
       outbound_sms = OutboundSms.new(:from=>from.mobile_no, :to=>member.mobile_no, :message=>message, :group=>self)
@@ -108,14 +114,36 @@ class Group < ActiveRecord::Base
      group_members = self.members
      group_members.each do |group_member|
        if members.include?(group_member)
-         members.remove(group_member)
+         members.delete(group_member)
        end
      end
      members
    end
  
   def get_list(user)
+    puts "members....#{self.members}"
     puts "list......#{self.has_member?(user)}"
     self.has_member?(user) ? self.members.collect{|user| user.mobile_no}.join(',').to_s : false 
+  end
+  
+  def contact_admin(message, user=nil)
+      from_user = user.nil? ? User.system_user : user
+      admin = self.mods.to_ary[0]
+      outbound_sms = OutboundSms.new(:from=>from_user.mobile_no, :to=>admin.mobile_no, :message=>message, :group=>self)
+      outbound_sms.queue_sms
+  end
+  
+  def mute_membership(membership)
+    unless membership.nil?
+      membership.mute=true
+      membership.save
+    end
+  end
+  
+  def unmute_membership(membership)
+    unless membership.nil?
+      membership.mute=false
+      membership.save
+    end
   end
 end
