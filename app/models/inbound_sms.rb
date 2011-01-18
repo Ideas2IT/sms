@@ -176,7 +176,7 @@ class InboundSms < ActiveRecord::Base
     else
       message = "Access denied for this group #{group_title}" 
     end
-    outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => user.mobile_no, :message => message)
+    outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => from, :message => message)
     outbound_sms.queue_sms 
   end  
     
