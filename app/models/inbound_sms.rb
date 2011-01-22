@@ -71,17 +71,25 @@ class InboundSms < ActiveRecord::Base
       outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => from, :message => inviter_message)
       outbound_sms.queue_sms
     else
-      if group.has_member?(user)
-        members = group.get_non_existing_members(members)
-        inviter_message = "The valid numbers you provided were added to the group #{group_title} successfully"
-        group.add_members(members)
-        group.send_message(message, User.system_user, members)
+      if group.has_member?(user)        
+        if !members.nil? and !members.empty?
+          members = group.get_non_existing_members(members)
+          inviter_message = "The valid numbers you provided were added to the group #{group_title} successfully"
+          group.add_members(members)
+          group.send_message(message, User.system_user, members)          
+        end
+        if !invalid_members.nil? and !invalid_members.empty?
+            user.intimate_invalid_members(invalid_members)
+        end
       else       
         inviter_message = "You are not authorized to invite a member to the group #{group_title}"
       end
-      users = []
+      unless inviter_message.nil?
+        users = []
         group.send_message(inviter_message, User.system_user, users<<user)
+      end
     end
+    
     
   end
 
@@ -92,16 +100,22 @@ class InboundSms < ActiveRecord::Base
     users = User.form_users(mobile_nos)            
     message = "#{from} has added you to the group #{group_title}"    
     members, invalid_members = User.slice_invalid_users(users)    
-    if !group.nil? and group.has_admin?(user)      
+    if !group.nil? and group.has_admin?(user) and !members.nil? and !members.empty?
+      puts "first if...."
       members = group.get_non_existing_members(members)
-      admin_message = "The valid numbers you provided were added to the group #{group_title} successfully"
-      group.add_members(members)      
+      if !members.nil? and !members.empty?
+        puts "next if...."
+        admin_message = "The valid numbers you provided were added to the group #{group_title} successfully"
+        group.add_members(members)
+      end
     elsif group.nil?     
       group = Group.create_group_for_user(user, group_title, members)
       admin_message = "The group #{group_title} was created successfully and the valid numbers you provided were added"          
     end
-    group.contact_admin(admin_message)
-    group.send_message(message, User.system_user, members)
+    if !members.nil? and !members.empty?
+      group.contact_admin(admin_message)
+      group.send_message(message, User.system_user, members)
+    end
     if !invalid_members.nil? and !invalid_members.empty?
       user.intimate_invalid_members(invalid_members)
     end

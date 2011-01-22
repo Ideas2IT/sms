@@ -14,7 +14,8 @@ Sms::Application.routes.draw do
   #   resources :products
 
   match '/show_contact_admin' => 'users#show_contact_admin', :as => :show_contact_admin
-
+  match ':sms/:incoming_message/:from/:message' => 'sms#incoming_message', :as => :incoming_message
+  
   resources :users do
     member do 
       get 'sms_admin'
@@ -22,12 +23,12 @@ Sms::Application.routes.draw do
     end
   end
   
-  resources :sms do
-    member do 
-      #get 'sms_admin'
-      get 'incoming_message'
-    end
-  end
+#  resources :sms do
+#    member do 
+#      #get 'sms_admin'
+#      get 'incoming_message'
+#    end
+#  end
 
   # Sample resource route with options:
   #   resources :products do
@@ -70,5 +71,5 @@ Sms::Application.routes.draw do
 
   # This is a legacy wild controller route that's not recommended for RESTful applications.
   # Note: This route will make all actions in every controller accessible via GET requests.
-  # match ':controller(/:action(/:id(.:format)))'
+  # match ':controller(/:action(/:id(.:format)))'  
 end
