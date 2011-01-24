@@ -5,10 +5,19 @@ require 'logger'
 
 
 namespace :db do
-  namespace :add_actions do
-    desc "load actions"
+  namespace :load_defaults do
+    desc "load "
     task :load => :environment do |t|
       load_actions
+      add_system_user
+    end
+    desc "load actions"
+    task :load_actions => :environment do |t|
+      load_actions
+    end
+    desc "add system user"
+    task :load_system_users => :environment do |t|
+      add_system_user
     end
   end
 end
@@ -28,4 +37,14 @@ def load_actions
     end
     logger.info "action added for #{keyword}" 
   end
+end
+
+def add_system_user
+  logger = Logger.new STDOUT
+  user = User.find_by_mobile_no(SYSTEM_MOBILE_NO)
+  if user.nil?
+    user = User.new(:mobile_no=> SYSTEM_MOBILE_NO,:company_id=>1)
+    user.save
+  end
+  logger.info "action added for system user #{SYSTEM_MOBILE_NO}"
 end
