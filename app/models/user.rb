@@ -11,7 +11,7 @@ class User < ActiveRecord::Base
  class << self
    
    def system_user
-     find(1)
+     find_by_mobile_no(SYSTEM_MOBILE_NO)
    end
    def exists?(mobile)
      find_by_mobile_no(mobile)
