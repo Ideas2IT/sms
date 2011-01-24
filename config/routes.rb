@@ -14,7 +14,7 @@ Sms::Application.routes.draw do
   #   resources :products
 
   match '/show_contact_admin' => 'users#show_contact_admin', :as => :show_contact_admin
-  match ':sms/:incoming_message/:from/:message' => 'sms#incoming_message', :as => :incoming_message
+#  match ':sms/:incoming_message/:from/:message' => 'sms#incoming_message', :as => :incoming_message
   
   resources :users do
     member do 
@@ -23,12 +23,12 @@ Sms::Application.routes.draw do
     end
   end
   
-#  resources :sms do
-#    member do 
-#      #get 'sms_admin'
-#      get 'incoming_message'
-#    end
-#  end
+  resources :sms do
+    member do 
+      #get 'sms_admin'
+      get 'incoming_message'
+    end
+  end
 
   # Sample resource route with options:
   #   resources :products do
