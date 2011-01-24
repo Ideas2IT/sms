@@ -1,7 +1,7 @@
 class InboundSms < ActiveRecord::Base
   belongs_to :thread_source, :class_name => "OutboundSms",
                          :foreign_key => "thread_source_id"
-                         
+  
   belongs_to :group 
   belongs_to :action
   class << self
@@ -15,71 +15,75 @@ class InboundSms < ActiveRecord::Base
         OutboundSms.invalid_format(from)
       else
         data = parse_data(message)
-      case action.name
-        when "LIST_ALL_USERS"
+        add_to_inbound_sms(from,message,action)
+        case action.name
+          when "LIST_ALL_USERS"
           list(from,group_title)
-        when "ADD_USER_TO_GROUP_FROM_ADMIN"
+          when "ADD_USER_TO_GROUP_FROM_ADMIN"
           add_user_to_group(from, group_title, data)
-        when "INVITE_USERS_TO_GROUP"
+          when "INVITE_USERS_TO_GROUP"
           invite_users_to_group(from, group_title, data)
-        when "SEND_MESSAGE_TO_GROUP"
+          when "SEND_MESSAGE_TO_GROUP"
           send_message_to_group(from, group_title, data)
-        when "UNSUBSCRIBE"
+          when "UNSUBSCRIBE"
           unsubscribe(from, group_title)
-        when "REMOVE"
+          when "REMOVE"
           remove(from, group_title, data)
-        when "MUTE"
+          when "MUTE"
           mute(from,group_title)
-        when "REJOIN"
+          when "REJOIN"
           rejoin(from,group_title)
         else
           OutboundSms.invalid_format(from)
-      end
+        end
       end      
     end
+    def add_to_inbound_sms(from,message,action)
+      inbound_sms = InboundSms.new(:source=> from, :message=> message, :action=> action)
+      inbound_sms.save
+    end
+    def parse_action(message)
+      action = message.split(" ")[0]
+      action = action.downcase unless action.nil?
+      action
+    end
     
-  def parse_action(message)
-    action = message.split(" ")[0]
-    action = action.downcase unless action.nil?
-    action
-  end
-  
-  def parse_group(message)
-    group_name = message.split(" ")[1]
-    group_name = group_name.downcase unless group_name.nil?
-    group_name
-  end
-  
-  def parse_data(message)
-    message = (message.split(" ")[2..(message.length-1)])
-    message.join(" ") unless message.nil?
-  end
-  
-  def detokenize_message(token, message)
-    message.split(token)[1]
-  end
-  
-  def invite_users_to_group(from, group_title, numbers)
-    mobile_nos = numbers.split(",")
-    group = Group.exists?(group_title)    
-    user = User.form_user(from)[:user]
-    users = User.form_users(mobile_nos)            
-    message = "#{from} has added you to the group #{group_title}"    
-    members, invalid_members = User.slice_invalid_users(users)
-    if group.nil?
-      inviter_message = "Group #{group_title} does not exist"
-      outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => from, :message => inviter_message)
-      outbound_sms.queue_sms
-    else
-      if group.has_member?(user)
-        members = group.get_non_existing_members(members)
-        inviter_message = "The valid numbers you provided were added to the group #{group_title} successfully"
-        group.add_members(members)
-        group.send_message(message, User.system_user, members)
-      else       
-        inviter_message = "You are not authorized to invite a member to the group #{group_title}"
-      end
-      users = []
+    def parse_group(message)
+      group_name = message.split(" ")[1]
+      group_name = group_name.downcase unless group_name.nil?
+      group_name
+    end
+    
+    def parse_data(message)
+      message = (message.split(" ")[2..(message.length-1)])
+      message.join(" ") unless message.nil?
+    end
+    
+    def detokenize_message(token, message)
+      message.split(token)[1]
+    end
+    
+    def invite_users_to_group(from, group_title, numbers)
+      mobile_nos = numbers.split(",")
+      group = Group.exists?(group_title)    
+      user = User.form_user(from)[:user]
+      users = User.form_users(mobile_nos)            
+      message = "#{from} has added you to the group #{group_title}"    
+      members, invalid_members = User.slice_invalid_users(users)
+      if group.nil?
+        inviter_message = "Group #{group_title} does not exist"
+        outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => from, :message => inviter_message)
+        outbound_sms.queue_sms
+      else
+        if group.has_member?(user)
+          members = group.get_non_existing_members(members)
+          inviter_message = "The valid numbers you provided were added to the group #{group_title} successfully"
+          group.add_members(members)
+          group.send_message(message, User.system_user, members)
+        else       
+          inviter_message = "You are not authorized to invite a member to the group #{group_title}"
+        end
+        users = []
         group.send_message(inviter_message, User.system_user, users<<user)
     end
     
