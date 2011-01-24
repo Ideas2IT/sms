@@ -9,14 +9,19 @@ class InboundSms < ActiveRecord::Base
     def parse_incoming_sms(from, message)
       #user = User.find_by_mobile_no(from)
       action_keyword = parse_action(message)
-      action = Action.find_by_keyword(action_keyword)
+      action = Action.find_by_keyword(action_keyword)      
       group_title = parse_group(message)
-      add_to_inbound_sms(from,message,action)
-      if action.nil? or group_title.nil?
-        OutboundSms.invalid_format(from)
+      add_to_inbound_sms(from,message,action)      
+      if action.nil? or group_title.nil?        
+        group =  Group.exists?(action_keyword)
+        unless group.nil?
+          data = parse_data(message, 1)
+          send_message_to_group(from, action_keyword, data)
+        else
+          OutboundSms.invalid_format(from)
+        end       
       else
-        data = parse_data(message)
-        
+        data = parse_data(message)        
         case action.name
           when "LIST_ALL_USERS"
           list(from,group_title)
@@ -45,20 +50,20 @@ class InboundSms < ActiveRecord::Base
       inbound_sms.save
     end
     
-    def parse_action(message)
-      action = message.split(" ")[0]
+    def parse_action(message, index = 0)
+      action = message.split(" ")[index]
       action = action.downcase unless action.nil?
       action
     end
     
-    def parse_group(message)
-      group_name = message.split(" ")[1]
+    def parse_group(message, index = 1)
+      group_name = message.split(" ")[index]
       group_name = group_name.downcase unless group_name.nil?
       group_name
     end
     
-    def parse_data(message)
-      message = (message.split(" ")[2..(message.length-1)])
+    def parse_data(message, index = 2)
+      message = (message.split(" ")[index..(message.length-1)])
       message.join(" ") unless message.nil?
     end
     
@@ -80,13 +85,18 @@ class InboundSms < ActiveRecord::Base
       else
         if group.has_member?(user)        
           if !members.nil? and !members.empty?
-            members = group.get_non_existing_members(members)
-            inviter_message = "The valid numbers you provided were added to the group #{group_title} successfully"
-            group.add_members(members)
-            group.send_message(message, User.system_user, members)          
+            members, existing_members = group.get_non_existing_members(members)
+            if !members.nil? and !members.empty?
+              inviter_message = "The valid numbers you provided were added to the group #{group_title} successfully"
+              group.add_members(members)
+              group.send_message(message, User.system_user, members)
+            end
           end
           if !invalid_members.nil? and !invalid_members.empty?
             user.intimate_invalid_members(invalid_members)
+          end
+          if !existing_members.nil? and !existing_members.empty?
+            user.intimate_existing_members(existing_members, group_title)
           end
         else       
           inviter_message = "You are not authorized to invite a member to the group #{group_title}"
@@ -107,11 +117,9 @@ class InboundSms < ActiveRecord::Base
     users = User.form_users(mobile_nos)            
     message = "#{from} has added you to the group #{group_title}"    
     members, invalid_members = User.slice_invalid_users(users)    
-    if !group.nil? and group.has_admin?(user) and !members.nil? and !members.empty?
-      puts "first if...."
-      members = group.get_non_existing_members(members)
-      if !members.nil? and !members.empty?
-        puts "next if...."
+    if !group.nil? and group.has_admin?(user) and !members.nil? and !members.empty?      
+      members, existing_members = group.get_non_existing_members(members)
+      if !members.nil? and !members.empty?        
         admin_message = "The valid numbers you provided were added to the group #{group_title} successfully"
         group.add_members(members)
       end
@@ -125,6 +133,9 @@ class InboundSms < ActiveRecord::Base
     end
     if !invalid_members.nil? and !invalid_members.empty?
       user.intimate_invalid_members(invalid_members)
+    end
+    if !existing_members.nil? and !existing_members.empty?
+      user.intimate_existing_members(existing_members, group_title)
     end
   end
   
