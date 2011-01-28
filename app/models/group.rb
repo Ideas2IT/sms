@@ -104,7 +104,7 @@ class Group < ActiveRecord::Base
       members.delete(from)
     end
     members.each do |member|
-      outbound_sms = OutboundSms.new(:from=>from.mobile_no, :to=>member.mobile_no, :message=>message, :group=>self)
+      outbound_sms = OutboundSms.new(:from_no=>from.mobile_no, :to_no=>member.mobile_no, :message=>message, :group=>self)
       outbounds_sms << outbound_sms
     end
     OutboundSms.queue_bulk(outbounds_sms)
@@ -132,7 +132,7 @@ class Group < ActiveRecord::Base
       from_user = user.nil? ? User.system_user : user
       admin = self.mods.to_ary[0]
       puts "admin.........#{self.mods.inspect}"
-      outbound_sms = OutboundSms.new(:from=>from_user.mobile_no, :to=>admin.mobile_no, :message=>message, :group=>self)
+      outbound_sms = OutboundSms.new(:from_no=>from_user.mobile_no, :to_no=>admin.mobile_no, :message=>message, :group=>self)
       outbound_sms.queue_sms
   end
   

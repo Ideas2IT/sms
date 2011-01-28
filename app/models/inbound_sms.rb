@@ -80,7 +80,7 @@ class InboundSms < ActiveRecord::Base
       members, invalid_members = User.slice_invalid_users(users)
       if group.nil?
         inviter_message = "Group #{group_title} does not exist"
-        outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => from, :message => inviter_message)
+        outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => inviter_message)
         outbound_sms.queue_sms
       else
         if group.has_member?(user)        
@@ -146,7 +146,7 @@ class InboundSms < ActiveRecord::Base
       group.send_message(message, user)
     else      
       message = user.nil? ? "You are not registered with us" : "Invalid Group"
-      outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => from, :message => message)
+      outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => message)
       outbound_sms.queue_sms
     end
   end
@@ -164,7 +164,7 @@ class InboundSms < ActiveRecord::Base
     else      
       message = user.nil? ? "You are not registered with us in any of the group" : "Group #{group_title} does not exist"      
     end
-    outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => from, :message => message)
+    outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => message)
     outbound_sms.queue_sms
   end
   
@@ -187,7 +187,7 @@ class InboundSms < ActiveRecord::Base
         message="User #{number} is not a member of group #{group_title}"
       end      
     end      
-      outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => from, :message => message)
+      outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => message)
       outbound_sms.queue_sms    
   end   
 
@@ -205,7 +205,7 @@ class InboundSms < ActiveRecord::Base
      else
       message = "Group #{group_title} does not exist"
     end    
-    outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => from, :message => message)
+    outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => message)
     outbound_sms.queue_sms     
   end
  
@@ -223,7 +223,7 @@ class InboundSms < ActiveRecord::Base
     else
       message = "Group #{group_title} does not exist"
     end    
-    outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => from, :message => message)
+    outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => message)
     outbound_sms.queue_sms     
   end     
 
@@ -246,7 +246,7 @@ class InboundSms < ActiveRecord::Base
     else
       message = "Access denied for this group #{group_title}" 
     end
-    outbound_sms = OutboundSms.new(:from => SYSTEM_MOBILE_NO, :to => from, :message => message)
+    outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => message)
     outbound_sms.queue_sms 
   end  
     
@@ -256,7 +256,7 @@ class InboundSms < ActiveRecord::Base
     
   end
   def broadcast_to_target
-    outbound_sms = OutboundSms.new(:to => self.intended_to, :message => self.message, :thread_source => self, :token => OutboundSms.generate_token)
+    outbound_sms = OutboundSms.new(:to_no => self.intended_to, :message => self.message, :thread_source => self, :token => OutboundSms.generate_token)
     outbound_sms.queue_sms
   end
   

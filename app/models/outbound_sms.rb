@@ -7,9 +7,12 @@ class OutboundSms < ActiveRecord::Base
   class << self
     
     def invalid_format(mobile_no)
-      message = ""
-      outbound_sms = OutboundSms.new(:from => User.system_user.mobile_no, :to => mobile_no,:message => INVALID_FORMAT)
-      outbound_sms.queue_sms
+      error_count = OutboundSms.count(:all,:conditions=>['to_no = ? AND message = ? AND created_at > ?', mobile_no,INVALID_FORMAT,10.minutes.ago]) 
+      if error_count<2
+        message = ""
+        outbound_sms = OutboundSms.new(:from_no => User.system_user.mobile_no, :to_no => mobile_no,:message => INVALID_FORMAT)
+        outbound_sms.queue_sms
+      end
     end
     
    def find_source_by_token(token)
@@ -28,7 +31,7 @@ class OutboundSms < ActiveRecord::Base
        admin_no = (current_company.admin_user).mobile_no
        token = generate_token
        tokenized_message = tokenize_message(token, message)
-       outbound_sms = OutboundSms.new(:from => mobile_no, :to => admin_no, :token => token, :message => tokenized_message)
+       outbound_sms = OutboundSms.new(:from_no => mobile_no, :to_no => admin_no, :token => token, :message => tokenized_message)
        outbound_sms.queue_sms    
      end     
    end    
@@ -54,7 +57,7 @@ class OutboundSms < ActiveRecord::Base
   end
   
   def queue_sms
-    if OutboundSms.jeno_deliver_sms(self.to, self.message)
+    if OutboundSms.jeno_deliver_sms(self.to_no, self.message)
           self.gateway_delivered = true
     end 
     self.save

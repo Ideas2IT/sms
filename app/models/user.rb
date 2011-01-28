@@ -69,14 +69,14 @@ class User < ActiveRecord::Base
  def intimate_invalid_members(invalid_members)
    invalid_numbers = invalid_members.join(",").to_s
    message = "The numbers you provided #{invalid_numbers} are invalid"
-   outbound_sms = OutboundSms.new(:from=>User.system_user.mobile_no, :to=>self.mobile_no, :message=>message)
+   outbound_sms = OutboundSms.new(:from_no=>User.system_user.mobile_no, :to_no=>self.mobile_no, :message=>message)
    outbound_sms.queue_sms
  end
  
  def intimate_existing_members(existing_members, group_name)
    existing_numbers = existing_members.collect{|user| user.mobile_no}.join(",").to_s
    message = "The numbers you provided #{existing_numbers} are already a member of the group #{group_name}"
-   outbound_sms = OutboundSms.new(:from=>User.system_user.mobile_no, :to=>self.mobile_no, :message=>message)
+   outbound_sms = OutboundSms.new(:from_no=>User.system_user.mobile_no, :to_no=>self.mobile_no, :message=>message)
    outbound_sms.queue_sms
  end
   
