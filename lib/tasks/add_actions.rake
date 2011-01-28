@@ -24,9 +24,9 @@ end
 
 def load_actions
   logger = Logger.new STDOUT
-  name_arr=['ADD_USER_TO_GROUP_FROM_ADMIN','LIST_ALL_USERS','SEND_MESSAGE_TO_GROUP','MUTE','REJOIN','INVITE_USERS_TO_GROUP','UNSUBSCRIBE','REMOVE']
-  description_arr=['Creating a new Group','Listing Users of a Group ','Messages sent by users of a Group','Temporary Disconnect','Joining after temporary Disconnection','Inviting Users to join in to a Group','Removing a User from a Group','Removing a group from Subscription']
-  keywords_arr=['add','list','msg','mute','rejoin','invite','unsub','rmv']
+  name_arr=['ADD_USER_TO_GROUP_FROM_ADMIN','LIST_ALL_USERS','SEND_MESSAGE_TO_GROUP','MUTE','REJOIN','INVITE_USERS_TO_GROUP','UNSUBSCRIBE','REMOVE','HELP']
+  description_arr=['Creating a new Group','Listing Users of a Group ','Messages sent by users of a Group','Temporary Disconnect','Joining after temporary Disconnection','Inviting Users to join in to a Group','Removing a User from a Group','Removing a group from Subscription','suggests user with the list of available keyword']
+  keywords_arr=['add','list','msg','mute','rejoin','invite','unsub','rmv','help']
   keywords_arr.each_with_index do |keyword,i|
   action = Action.find_by_keyword(keyword)
     if action.nil?
