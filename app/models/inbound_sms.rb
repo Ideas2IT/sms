@@ -9,19 +9,22 @@ class InboundSms < ActiveRecord::Base
     def parse_incoming_sms(from, message)
       #user = User.find_by_mobile_no(from)
       action_keyword = parse_action(message)
-      action = Action.find_by_keyword(action_keyword)      
+      action = Action.find_by_keyword(action_keyword)  
       group_title = parse_group(message)
       add_to_inbound_sms(from,message,action)      
-      if action.nil? or group_title.nil?        
+      if action.nil? 
+        if group_title.nil?  
         group =  Group.exists?(action_keyword)
         unless group.nil?
           data = parse_data(message, 1)
           send_message_to_group(from, action_keyword, data)
         else
           OutboundSms.invalid_format(from)
-        end       
+          send_keywords_to_user(from)
+        end      
+        end
       else
-        data = parse_data(message)        
+        data = parse_data(message) 
         case action.name
           when "LIST_ALL_USERS"
           list(from,group_title)
@@ -39,10 +42,14 @@ class InboundSms < ActiveRecord::Base
           mute(from,group_title)
           when "REJOIN"
           rejoin(from,group_title)
+          when "HELP"
+          send_keywords_to_user(from)
+          
         else
           OutboundSms.invalid_format(from)
         end
-      end      
+      end
+      
     end
     
     def add_to_inbound_sms(from,message,action)
@@ -122,10 +129,12 @@ class InboundSms < ActiveRecord::Base
       if !members.nil? and !members.empty?        
         admin_message = "The valid numbers you provided were added to the group #{group_title} successfully"
         group.add_members(members)
+        send_keywords_to_user(from)
       end
     elsif group.nil?     
       group = Group.create_group_for_user(user, group_title, members)
-      admin_message = "The group #{group_title} was created successfully and the valid numbers you provided were added"          
+      admin_message = "The group #{group_title} was created successfully and the valid numbers you provided were added" 
+      send_keywords_to_user(from)
     end
     if !members.nil? and !members.empty?
       group.contact_admin(admin_message)
@@ -249,6 +258,16 @@ class InboundSms < ActiveRecord::Base
     outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => message)
     outbound_sms.queue_sms 
   end  
+  
+   def send_keywords_to_user(from)
+    keywords = Action.get_keywords
+    puts "list of keywords #{keywords}"
+    if !keywords.nil?
+      message = "Please use these keywords for messaging #{keywords}"
+    end
+    outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => message)
+    outbound_sms.queue_sms    
+  end
     
   end
   
