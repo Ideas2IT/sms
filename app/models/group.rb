@@ -5,6 +5,7 @@ class Group < ActiveRecord::Base
   has_many :pending_members, :through => :memberships, :source => :user, :conditions => 'accepted_at IS NULL'
   has_many :active_members, :through => :memberships, :source => :user, :conditions => ['mute = ?', false]
   has_many :mods, :through => :memberships, :source => :user, :conditions => ['admin_role = ?', true]
+  has_many :active_mods, :through => :memberships, :source => :user, :conditions => ['admin_role = ? AND mute = ?', true, false]
   has_many :inbound_sms 
   has_many :outbound_sms
   
@@ -89,12 +90,20 @@ class Group < ActiveRecord::Base
     self.mods.to_ary.include?(user)
   end
   
+  def has_active_admin?(user)    
+    self.active_mods.to_ary.include?(user)
+  end
+  
   def active_membership(user)
     user.nil? ? nil : Membership.find(:first, :conditions => ['group_id = ? AND user_id = ? AND mute = ?', self.id, user.id, false])
   end
   
   def muted_membership(user)
     user.nil? ? nil : Membership.find(:first, :conditions => ['group_id = ? AND user_id = ? AND mute = ?', self.id, user.id, true])
+  end
+  
+  def has_active_membership?(user)
+    !self.active_membership(user).nil?
   end
   
   def add_members(users)
@@ -138,16 +147,13 @@ class Group < ActiveRecord::Base
      return members, existing_members
    end
  
-  def get_list(user)
-    puts "members....#{self.members}"
-    puts "list......#{self.has_member?(user)}"
+  def get_list(user)    
     self.has_member?(user) ? self.members.collect{|user| user.mobile_no}.join(',').to_s : false 
   end
   
   def contact_admin(message, user=nil)
       from_user = user.nil? ? User.system_user : user
-      admin = self.mods.to_ary[0]
-      puts "admin.........#{self.mods.inspect}"
+      admin = self.mods.to_ary[0]      
       outbound_sms = OutboundSms.new(:from_no=>from_user.mobile_no, :to_no=>admin.mobile_no, :message=>message, :group=>self)
       outbound_sms.queue_sms
   end

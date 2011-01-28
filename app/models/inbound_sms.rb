@@ -11,15 +11,12 @@ class InboundSms < ActiveRecord::Base
       action_keyword = parse_action(message)
       action = Action.find_by_keyword(action_keyword)  
       group_title = parse_group(message)
-      group_title_avail = Group.exists?(group_title)
-      add_to_inbound_sms(from,message,action)     
-      puts "action #{action}...............#{group_title}"
+      group = Group.exists?(group_title)
+      add_to_inbound_sms(from,message,action)      
       if action.nil? 
-        if group_title_avail.nil? 
-        group =  Group.exists?(action_keyword)
-        puts "group exists---------------#{group.title}"
-        unless group.nil?
-          puts "group----------------is not nil"
+        if group.nil? 
+        group =  Group.exists?(action_keyword)        
+        unless group.nil?          
           data = parse_data(message, 1)
           send_message_to_group(from, action_keyword, data)
         else
@@ -94,7 +91,7 @@ class InboundSms < ActiveRecord::Base
         outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => inviter_message)
         outbound_sms.queue_sms
       else
-        if group.has_member?(user)        
+        if group.has_active_membership?(user)        
           if !members.nil? and !members.empty?
             members, existing_members = group.get_non_existing_members(members)
             if !members.nil? and !members.empty?
@@ -110,7 +107,7 @@ class InboundSms < ActiveRecord::Base
             user.intimate_existing_members(existing_members, group_title)
           end
         else       
-          inviter_message = "You are not authorized to invite a member to the group #{group_title}"
+          inviter_message = "You are not an active member to invite a member to the group #{group_title}"
         end
         unless inviter_message.nil?
           users = []
@@ -125,22 +122,27 @@ class InboundSms < ActiveRecord::Base
     mobile_nos = numbers.split(",")        
     user = User.form_user(from)[:user]
     if Group.user_already_created_same_group?(user, group_title)
-      message = "You already created a group with name #{group_title}"
+      message = "You already created a group with name #{group_title}. Creation not possible again"
       user.send_message(message)
     else
       group = Group.exists?(group_title)        
       users = User.form_users(mobile_nos) 
           
       members, invalid_members = User.slice_invalid_users(users)    
-      if !group.nil? and group.has_admin?(user) and !members.nil? and !members.empty? 
-        
-        members, existing_members = group.get_non_existing_members(members)
-        if !members.nil? and !members.empty?        
-          admin_message = "The valid numbers you provided were added to the group #{group_title} successfully with title #{group.title}"
-          group.add_members(members)
-          send_keywords_to_user(from)
+      if !group.nil? 
+        if group.has_active_admin?(user) 
+          if !members.nil? and !members.empty?
+            members, existing_members = group.get_non_existing_members(members)
+            if !members.nil? and !members.empty?        
+              admin_message = "The valid numbers you provided were added to the group #{group_title} successfully with title #{group.title}"
+              group.add_members(members)
+              send_keywords_to_user(from)
+            end
+          end
+        else
+          admin_message = "You are not a valid active admin of the group #{group_title}"
         end
-      elsif group.nil?     
+      else     
         group = Group.create_group_for_user(user, group_title, members)
         admin_message = "The group #{group_title} was created with #{group.title} and the valid numbers you provided were added"    
         send_keywords_to_user(from)
@@ -163,9 +165,15 @@ class InboundSms < ActiveRecord::Base
     group = Group.exists?(group_title)
     user = User.exists?(from)
     if !user.nil? and !group.nil?
-      group.send_message(message, user)
+      if group.has_active_membership?(user)
+        group.send_message(message, user)
+      else
+        message = "You are not an active member of the group #{group_title}"
+      end      
     else      
-      message = user.nil? ? "You are not registered with us" : "Invalid Group"
+      message = user.nil? ? "You are not registered with us" : "Invalid Group"      
+    end
+    unless message.nil?
       outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => message)
       outbound_sms.queue_sms
     end
@@ -192,9 +200,9 @@ class InboundSms < ActiveRecord::Base
     group = Group.exists?(group_title)
     admin = User.exists?(from)
     user = User.exists?(number)
-    is_admin = group.has_admin?(admin)
+    is_admin = group.has_active_admin?(admin)
     if admin.nil? or !is_admin
-      message = "You are not a valid admin for the group with title #{group_title}"
+      message = "You are not a valid active admin for the group with title #{group_title}"
     elsif group.nil?
       message = "Group with title #{group_title} does not exist"
     elsif user.nil?
@@ -271,8 +279,7 @@ class InboundSms < ActiveRecord::Base
   end  
   
    def send_keywords_to_user(from)
-    keywords = Action.get_keywords
-    puts "list of keywords #{keywords}"
+    keywords = Action.get_keywords    
     if !keywords.nil?
       message = "Please use these keywords for messaging #{keywords}"
     end
