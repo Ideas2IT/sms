@@ -118,34 +118,37 @@ class InboundSms < ActiveRecord::Base
   end
 
   def add_user_to_group(from, group_title, numbers)
-    mobile_nos = numbers.split(",")
-    group = Group.exists?(group_title)    
+    mobile_nos = numbers.split(",")        
     user = User.form_user(from)[:user]
-    users = User.form_users(mobile_nos)            
-    message = "#{from} has added you to the group #{group_title}"    
-    members, invalid_members = User.slice_invalid_users(users)    
-    if !group.nil? and group.has_admin?(user) and !members.nil? and !members.empty?      
-      members, existing_members = group.get_non_existing_members(members)
-      if !members.nil? and !members.empty?        
-        admin_message = "The valid numbers you provided were added to the group #{group_title} successfully"
-        group.add_members(members)
-        send_keywords_to_user(from)
+    if Group.user_already_created_same_group?(user, group_title)
+      message = "You already created a group with name #{group_title}"
+      user.send_message(message)
+    else
+      group = Group.exists?(group_title)        
+      users = User.form_users(mobile_nos)            
+      message = "#{from} has added you to the group with title #{group.title}"    
+      members, invalid_members = User.slice_invalid_users(users)    
+      if !group.nil? and group.has_admin?(user) and !members.nil? and !members.empty?      
+        members, existing_members = group.get_non_existing_members(members)
+        if !members.nil? and !members.empty?        
+          admin_message = "The valid numbers you provided were added to the group #{group_title} successfully with title #{group.title}"
+          group.add_members(members)
+        end
+      elsif group.nil?     
+        group = Group.create_group_for_user(user, group_title, members)
+        admin_message = "The group #{group_title} was created with #{group.title} and the valid numbers you provided were added"          
       end
-    elsif group.nil?     
-      group = Group.create_group_for_user(user, group_title, members)
-      admin_message = "The group #{group_title} was created successfully and the valid numbers you provided were added" 
-      send_keywords_to_user(from)
-    end
-    if !members.nil? and !members.empty?
-      group.contact_admin(admin_message)
-      group.send_message(message, User.system_user, members)
-    end
-    if !invalid_members.nil? and !invalid_members.empty?
-      user.intimate_invalid_members(invalid_members)
-    end
-    if !existing_members.nil? and !existing_members.empty?
-      user.intimate_existing_members(existing_members, group_title)
-    end
+      if !members.nil? and !members.empty?
+        group.contact_admin(admin_message)
+        group.send_message(message, User.system_user, members)
+      end
+      if !invalid_members.nil? and !invalid_members.empty?
+        user.intimate_invalid_members(invalid_members)
+      end
+      if !existing_members.nil? and !existing_members.empty?
+        user.intimate_existing_members(existing_members, group_title)
+      end
+    end    
   end
   
   def send_message_to_group(from, group_title, message)
@@ -166,12 +169,12 @@ class InboundSms < ActiveRecord::Base
     if !user.nil? and !group.nil?
       if group.has_member?(user)
         group.kick(user)
-        message="You are successfully unsubscribed from the group #{group.title}"
+        message="You are successfully unsubscribed from the group #{group_title}"
       else
         message = "You are not a member of #{group_title} to unsubscribe"
       end
     else      
-      message = user.nil? ? "You are not registered with us in any of the group" : "Group #{group_title} does not exist"      
+      message = user.nil? ? "You are not registered with us in any of the group" : "Group with title #{group_title} does not exist"      
     end
     outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => message)
     outbound_sms.queue_sms
@@ -183,9 +186,9 @@ class InboundSms < ActiveRecord::Base
     user = User.exists?(number)
     is_admin = group.has_admin?(admin)
     if admin.nil? or !is_admin
-      message = "You are not a valid admin for the group #{group_title}"
+      message = "You are not a valid admin for the group with title #{group_title}"
     elsif group.nil?
-      message = "Group #{group_title} does not exist"
+      message = "Group with title #{group_title} does not exist"
     elsif user.nil?
       message = "No user exists with mobile number #{number}"
     else
@@ -212,7 +215,7 @@ class InboundSms < ActiveRecord::Base
           message = "You are currently not an active member of the group #{group_title}"
         end                      
      else
-      message = "Group #{group_title} does not exist"
+      message = "Group with title #{group_title} does not exist"
     end    
     outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => message)
     outbound_sms.queue_sms     
@@ -225,12 +228,12 @@ class InboundSms < ActiveRecord::Base
         membership = group.muted_membership(user)
         unless membership.nil?
           group.unmute_membership(membership)
-          message = "You are successfully unmuted from the group #{group_title}"
+          message = "You are successfully unmuted from the group #{group.title}"
         else
-          message = "You are currently not a muted member of the group #{group_title}"
+          message = "You are currently not a muted member of the group #{group.title}"
         end     
     else
-      message = "Group #{group_title} does not exist"
+      message = "Group with title #{group_title} does not exist"
     end    
     outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => message)
     outbound_sms.queue_sms     
@@ -250,7 +253,7 @@ class InboundSms < ActiveRecord::Base
             message = "Users in #{group.title} group #{list}"
           end
         else
-          message = "Group #{group_title} does not exist"
+          message = "Group with title #{group_title} does not exist"
         end
     else
       message = "Access denied for this group #{group_title}" 

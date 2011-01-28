@@ -8,10 +8,17 @@ class Group < ActiveRecord::Base
   has_many :inbound_sms 
   has_many :outbound_sms
   
+  RANDOM_UNIQUE_TITLE_DIGITS = 3
+  
   class << self
     
     def exists?(name)
-      find_by_title(name)
+      find_by_title(name.downcase)
+    end
+    
+    def user_already_created_same_group?(user, actual_name)
+      group = Group.find_by_actual_name(actual_name, :joins=>"INNER JOIN memberships m on m.group_id = groups.id AND m.user_id = #{user.id} AND m.admin_role=1")      
+      !group.nil?
     end
     
     def create_group(name)
@@ -20,8 +27,9 @@ class Group < ActiveRecord::Base
       group
     end
     
-    def create_group_for_user(admin, name, members)
-      group = Group.new(:title=>name, :company=>Thread.current[:current_company])      
+    def create_group_for_user(admin, name, members)      
+      title = Group.generate_unique_name(name)      
+      group = Group.new(:title=>title, :company=>Thread.current[:current_company], :actual_name=>name.downcase)      
       group.save!
       group.add_admin(admin)
       group.add_members(members)
@@ -29,12 +37,20 @@ class Group < ActiveRecord::Base
     end
     
     def create_if_not_exists(name)
+      title = Group.generate_unique_name(name)
       group =  exists?(name)
       if group.nil?
         group = create_group(name)
       end
       group
-    end    
+    end  
+    
+    def generate_unique_name(name)
+    count = Group.count(:all,:conditions=>['actual_name = ?', name.downcase])
+    digits = count.to_s.size
+    digits = digits > RANDOM_UNIQUE_TITLE_DIGITS ? digits : RANDOM_UNIQUE_TITLE_DIGITS
+    name+count.to_s.rjust(digits,'0')
+  end
   end
   
   def membership(user)
