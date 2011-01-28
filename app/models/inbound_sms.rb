@@ -11,11 +11,15 @@ class InboundSms < ActiveRecord::Base
       action_keyword = parse_action(message)
       action = Action.find_by_keyword(action_keyword)  
       group_title = parse_group(message)
-      add_to_inbound_sms(from,message,action)      
+      group_title_avail = Group.exists?(group_title)
+      add_to_inbound_sms(from,message,action)     
+      puts "action #{action}...............#{group_title}"
       if action.nil? 
-        if group_title.nil?  
+        if group_title_avail.nil? 
         group =  Group.exists?(action_keyword)
+        puts "group exists---------------#{group.title}"
         unless group.nil?
+          puts "group----------------is not nil"
           data = parse_data(message, 1)
           send_message_to_group(from, action_keyword, data)
         else
@@ -125,20 +129,24 @@ class InboundSms < ActiveRecord::Base
       user.send_message(message)
     else
       group = Group.exists?(group_title)        
-      users = User.form_users(mobile_nos)            
-      message = "#{from} has added you to the group with title #{group.title}"    
+      users = User.form_users(mobile_nos) 
+          
       members, invalid_members = User.slice_invalid_users(users)    
-      if !group.nil? and group.has_admin?(user) and !members.nil? and !members.empty?      
+      if !group.nil? and group.has_admin?(user) and !members.nil? and !members.empty? 
+        
         members, existing_members = group.get_non_existing_members(members)
         if !members.nil? and !members.empty?        
           admin_message = "The valid numbers you provided were added to the group #{group_title} successfully with title #{group.title}"
           group.add_members(members)
+          send_keywords_to_user(from)
         end
       elsif group.nil?     
         group = Group.create_group_for_user(user, group_title, members)
-        admin_message = "The group #{group_title} was created with #{group.title} and the valid numbers you provided were added"          
+        admin_message = "The group #{group_title} was created with #{group.title} and the valid numbers you provided were added"    
+        send_keywords_to_user(from)
       end
       if !members.nil? and !members.empty?
+        message = "#{from} has added you to the group with title #{group.title}"
         group.contact_admin(admin_message)
         group.send_message(message, User.system_user, members)
       end
