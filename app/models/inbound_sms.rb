@@ -168,13 +168,13 @@ class InboundSms < ActiveRecord::Base
       if group.has_active_membership?(user)
         group.send_message(message, user)
       else
-        message = "You are not an active member of the group #{group_title}"
+        reply_message = "You are not an active member of the group #{group_title}"
       end      
     else      
-      message = user.nil? ? "You are not registered with us" : "Invalid Group"      
+      reply_message = user.nil? ? "You are not registered with us" : "Invalid Group"      
     end
-    unless message.nil?
-      outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => message)
+    unless reply_message.nil?
+      outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => reply_message)
       outbound_sms.queue_sms
     end
   end
