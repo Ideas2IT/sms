@@ -148,7 +148,7 @@ class InboundSms < ActiveRecord::Base
         send_keywords_to_user(from)
       end
       if !members.nil? and !members.empty?
-        message = "#{from} has added you to the group with title #{group.title}"
+        message = "Welcome to Groupie - SMSChat with friends.#{from} has added you to the group with title #{group.title}.Reply Help to #{SYSTEM_MOBILE_NO} to get info on common commands"
         group.contact_admin(admin_message)
         group.send_message(message, User.system_user, members)
       end
@@ -281,7 +281,7 @@ class InboundSms < ActiveRecord::Base
    def send_keywords_to_user(from)
     keywords = Action.get_keywords    
     if !keywords.nil?
-      message = "Please use these keywords for messaging #{keywords}"
+      message = "Please use the format for messaging #{keywords}"
     end
     outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => message)
     outbound_sms.queue_sms    
