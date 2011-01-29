@@ -12,6 +12,7 @@ class OutboundSms < ActiveRecord::Base
         message = ""
         outbound_sms = OutboundSms.new(:from_no => User.system_user.mobile_no, :to_no => mobile_no,:message => INVALID_FORMAT)
         outbound_sms.queue_sms
+        InboundSms.send_keywords_to_user(mobile_no)
       end
     end
     

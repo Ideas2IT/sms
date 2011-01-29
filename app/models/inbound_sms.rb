@@ -21,7 +21,6 @@ class InboundSms < ActiveRecord::Base
           send_message_to_group(from, action_keyword, data)
         else
           OutboundSms.invalid_format(from)
-          send_keywords_to_user(from)
         end      
         end
       else
