@@ -11,7 +11,7 @@ class InboundSms < ActiveRecord::Base
       action_keyword = parse_action(message)
       action = Action.find_by_keyword(action_keyword)  
       group_title = parse_group(message)
-      group = Group.exists?(group_title)
+      group = Group.exists?(group_title) unless group_title.nil?
       add_to_inbound_sms(from,message,action)      
       if action.nil? 
         if group.nil? 
