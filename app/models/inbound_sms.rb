@@ -171,7 +171,7 @@ class InboundSms < ActiveRecord::Base
         reply_message = "You are not an active member of the group #{group_title}"
       end      
     else      
-      reply_message = user.nil? ? "You are not registered with us" : "Invalid Group"      
+      reply_message = user.nil? ? "Sorry. You are not authorized to perform (messaging)" : "This group does not exists"      
     end
     unless reply_message.nil?
       outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => reply_message)
@@ -187,10 +187,10 @@ class InboundSms < ActiveRecord::Base
         group.kick(user)
         message="You are successfully unsubscribed from the group #{group_title}"
       else
-        message = "You are not a member of #{group_title} to unsubscribe"
+        message = "You are not authorized to perform (unsubscription)"
       end
     else      
-      message = user.nil? ? "You are not registered with us in any of the group" : "Group with title #{group_title} does not exist"      
+      message = user.nil? ? "Sorry. You are not authorized to perform (unsubscription)" : "This group does not exists"      
     end
     outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => message)
     outbound_sms.queue_sms
@@ -202,9 +202,9 @@ class InboundSms < ActiveRecord::Base
     user = User.exists?(number)
     is_admin = group.has_active_admin?(admin)
     if admin.nil? or !is_admin
-      message = "You are not a valid active admin for the group with title #{group_title}"
+      message = "You are not authorized to (rmv: remove a member) from #{group_title}"
     elsif group.nil?
-      message = "Group with title #{group_title} does not exist"
+      message = "This group does not exists"
     elsif user.nil?
       message = "No user exists with mobile number #{number}"
     else
@@ -231,7 +231,7 @@ class InboundSms < ActiveRecord::Base
           message = "You are currently not an active member of the group #{group_title}"
         end                      
      else
-      message = "Group with title #{group_title} does not exist"
+      message = "This group does not exists"
     end    
     outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => message)
     outbound_sms.queue_sms     
@@ -249,7 +249,7 @@ class InboundSms < ActiveRecord::Base
           message = "You are currently not a muted member of the group #{group.title}"
         end     
     else
-      message = "Group with title #{group_title} does not exist"
+      message = "This group does not exists"
     end    
     outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => message)
     outbound_sms.queue_sms     
@@ -264,15 +264,15 @@ class InboundSms < ActiveRecord::Base
           if list.nil?
             message = "No users Found in your group #{group.title}" 
           elsif list==false
-            message = "Access denied for this group #{group.title}" 
+            message = "You are not a member of this group :#{group.title}. Please request a member to invite you" 
           else
             message = "Users in #{group.title} group #{list}"
           end
         else
-          message = "Group with title #{group_title} does not exist"
+          message = "This group does not exists"
         end
     else
-      message = "Access denied for this group #{group_title}" 
+      message = "Sorry. You are not authorized to perform (list). " 
     end
     outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => message)
     outbound_sms.queue_sms 
