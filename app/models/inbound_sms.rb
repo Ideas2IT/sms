@@ -15,13 +15,13 @@ class InboundSms < ActiveRecord::Base
       add_to_inbound_sms(from,message,action)      
       if action.nil? 
         if group.nil? 
-        group =  Group.exists?(action_keyword)        
-        unless group.nil?          
-          data = parse_data(message, 1)
-          send_message_to_group(from, action_keyword, data)
-        else
-          OutboundSms.invalid_format(from)
-        end      
+          group =  Group.exists?(action_keyword)        
+          unless group.nil?          
+            data = parse_data(message, 1)
+            send_message_to_group(from, action_keyword, data)
+          else
+            OutboundSms.invalid_format(from)
+          end      
         end
       else
         data = parse_data(message) 
@@ -81,12 +81,17 @@ class InboundSms < ActiveRecord::Base
     def invite_users_to_group(from, group_title, numbers)
       mobile_nos = numbers.split(",")
       group = Group.exists?(group_title)    
+      existing_users = User.find(:all,:conditions=>["mobile_no in (?)",mobile_nos])
+      existing_mob = existing_users.collect{|user| user.mobile_no}
+      new_mob = mobile_nos - existing_mob
       user = User.form_user(from)[:user]
-      users = User.form_users(mobile_nos)            
-      message = "#{from} has added you to the group #{group_title}"    
-      members, invalid_members = User.slice_invalid_users(users)
+      new_users = User.form_users(new_mob)
+      new_members, invalid_members = User.slice_invalid_users(new_users)
+      members = existing_users + new_members
+      message_for_existing = "#{from} has invited you to the group #{group_title} #{UNSUB_MESSAGE} #{HELP_MESSAGE}"
+      message_for_new ="#{WELCOME_MESSAGE_MEMBERS} #{from} has invited you to the group #{group_title} #{REPLY_MESSAGE}. #{message_for_existing}"
       if group.nil?
-        inviter_message = "Group #{group_title} does not exist"
+        inviter_message = GROUP_DOES_NOT_EXISTS
         outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => inviter_message)
         outbound_sms.queue_sms
       else
@@ -96,7 +101,8 @@ class InboundSms < ActiveRecord::Base
             if !members.nil? and !members.empty?
               inviter_message = "The valid numbers you provided were added to the group #{group_title} successfully"
               group.add_members(members)
-              group.send_message(message, User.system_user, members)
+              group.send_message(message_for_existing, User.system_user, existing_users)
+              group.send_message(message_for_new, User.system_user, new_members)
             end
           end
           if !invalid_members.nil? and !invalid_members.empty?
@@ -120,14 +126,20 @@ class InboundSms < ActiveRecord::Base
   def add_user_to_group(from, group_title, numbers)
     mobile_nos = numbers.split(",")        
     user = User.form_user(from)[:user]
+    existing_users = User.find(:all,:conditions=>["mobile_no in (?)",mobile_nos])
+    existing_mob = existing_users.collect{|user| user.mobile_no}
+    new_mob = mobile_nos - existing_mob
+    user = User.form_user(from)[:user]
+    message_for_existing = "#{from} has invited you to the group #{group_title} #{UNSUB_MESSAGE} #{HELP_MESSAGE}"
+    message_for_new ="#{WELCOME_MESSAGE_MEMBERS} #{from} has invited you to the group #{group_title} #{REPLY_MESSAGE}. #{message_for_existing}"
     if Group.user_already_created_same_group?(user, group_title)
       message = "You already created a group with name #{group_title}. Creation not possible again"
       user.send_message(message)
     else
       group = Group.exists?(group_title)        
-      users = User.form_users(mobile_nos) 
-          
-      members, invalid_members = User.slice_invalid_users(users)    
+      new_users = User.form_users(new_mob) 
+      new_members, invalid_members = User.slice_invalid_users(new_users) 
+      members = existing_users + new_members
       if !group.nil? 
         if group.has_active_admin?(user) 
           if !members.nil? and !members.empty?
@@ -147,9 +159,9 @@ class InboundSms < ActiveRecord::Base
         send_keywords_to_user(from)
       end
       if !members.nil? and !members.empty?
-        message = "Welcome to Groupie - SMSChat with friends.#{from} has added you to the group with title #{group.title}.Reply Help to #{SYSTEM_MOBILE_NO} to get info on common commands"
         group.contact_admin(admin_message)
-        group.send_message(message, User.system_user, members)
+        group.send_message(message_for_existing, User.system_user, existing_users)
+        group.send_message(message_for_new, User.system_user, new_members)
       end
       if !invalid_members.nil? and !invalid_members.empty?
         user.intimate_invalid_members(invalid_members)
@@ -170,7 +182,7 @@ class InboundSms < ActiveRecord::Base
         reply_message = "You are not an active member of the group #{group_title}"
       end      
     else      
-      reply_message = user.nil? ? "Sorry. You are not authorized to perform (messaging)" : "This group does not exists"      
+      reply_message = user.nil? ? "Sorry. You are not authorized to perform (messaging)" : GROUP_DOES_NOT_EXISTS      
     end
     unless reply_message.nil?
       outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => reply_message)
@@ -189,7 +201,7 @@ class InboundSms < ActiveRecord::Base
         message = "You are not authorized to perform (unsubscription)"
       end
     else      
-      message = user.nil? ? "Sorry. You are not authorized to perform (unsubscription)" : "This group does not exists"      
+      message = user.nil? ? "Sorry. You are not authorized to perform (unsubscription)" : GROUP_DOES_NOT_EXISTS      
     end
     outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => message)
     outbound_sms.queue_sms
@@ -203,7 +215,7 @@ class InboundSms < ActiveRecord::Base
     if admin.nil? or !is_admin
       message = "You are not authorized to (rmv: remove a member) from #{group_title}"
     elsif group.nil?
-      message = "This group does not exists"
+      message = GROUP_DOES_NOT_EXISTS
     elsif user.nil?
       message = "No user exists with mobile number #{number}"
     else
@@ -230,7 +242,7 @@ class InboundSms < ActiveRecord::Base
           message = "You are currently not an active member of the group #{group_title}"
         end                      
      else
-      message = "This group does not exists"
+      message = GROUP_DOES_NOT_EXISTS
     end    
     outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => message)
     outbound_sms.queue_sms     
@@ -248,7 +260,7 @@ class InboundSms < ActiveRecord::Base
           message = "You are currently not a muted member of the group #{group.title}"
         end     
     else
-      message = "This group does not exists"
+      message = GROUP_DOES_NOT_EXISTS
     end    
     outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => message)
     outbound_sms.queue_sms     
@@ -268,7 +280,7 @@ class InboundSms < ActiveRecord::Base
             message = "Users in #{group.title} group #{list}"
           end
         else
-          message = "This group does not exists"
+          message = GROUP_DOES_NOT_EXISTS
         end
     else
       message = "Sorry. You are not authorized to perform (list). " 
