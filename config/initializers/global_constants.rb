@@ -1,1 +1,7 @@
-SYSTEM_MOBILE_NO = '9841098410'
+SYSTEM_MOBILE_NO = '7299432977'
+GROUP_DOES_NOT_EXISTS = 'This group does not exists. Please try again.'
+WELCOME_MESSAGE_ADMIN = 'Welcome to Groupie - SMSGroupChat with friends. Any message to this group will be forwarded to all the members.'
+WELCOME_MESSAGE_MEMBERS = 'Welcome to Groupie - SMSGroupChat with friends.'
+HELP_MESSAGE = 'Reply Help  to get info on all commands.'
+UNSUB_MESSAGE = 'Reply UNSUB to this message to unsubscribe.'
+REPLY_MESSAGE = 'Reply message to message everybody in the group.'

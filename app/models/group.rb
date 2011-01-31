@@ -128,6 +128,7 @@ class Group < ActiveRecord::Base
       members = self.active_members.to_ary
       members.delete(from)
     end
+    message = "[#{from.mobile_no}@#{self.title}]:#{message}"
     members.each do |member|
       outbound_sms = OutboundSms.new(:from_no=>from.mobile_no, :to_no=>member.mobile_no, :message=>message, :group=>self)
       outbounds_sms << outbound_sms
