@@ -31,8 +31,8 @@ class User < ActiveRecord::Base
    end
    
    def form_user(mobile_no)
-     user = User.find_by_mobile_no(mobile_no, :conditions => ['company_id = ?', Thread.current[:current_company].id])
-     if user.nil?
+#     user = User.find_by_mobile_no(mobile_no, :conditions => ['company_id = ?', Thread.current[:current_company].id])
+#     if user.nil?
        user = User.new(:mobile_no => mobile_no, :company=>Thread.current[:current_company])
        begin
          user.save!
@@ -41,9 +41,9 @@ class User < ActiveRecord::Base
          puts "in exception........#{e.message}"
          err =  mobile_no
        end
-     else
-       #return user
-     end
+#     else
+#       #return user
+#     end
      return {:user=>user, :err=>err}
    end
    
