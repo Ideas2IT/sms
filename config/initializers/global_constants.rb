@@ -4,5 +4,5 @@ WELCOME_MESSAGE_ADMIN = 'Welcome to Groupie - SMSGroupChat with friends. Any mes
 WELCOME_MESSAGE_MEMBERS = 'Welcome to Groupie - SMSGroupChat with friends.'
 HELP_MESSAGE = 'Reply Help  to get info on all commands.'
 UNSUB_MESSAGE = 'Reply UNSUB to this message to unsubscribe.'
-REPLY_MESSAGE = 'Reply message to message everybody in the group.'
+#REPLY_MESSAGE = 'Reply message to message everybody in the group.'
 USER_DOES_NOT_EXISTS = 'Sorry. You are not a member in any of the groups'

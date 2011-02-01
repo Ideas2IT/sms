@@ -47,7 +47,7 @@ class InboundSms < ActiveRecord::Base
           when "GROUP"
           find_group(from)
           when "NICK"
-          
+          add_nickname(from,message)
         else
           OutboundSms.invalid_format(from)
         end
@@ -63,7 +63,7 @@ class InboundSms < ActiveRecord::Base
         user_non_admin = user.non_admin_groups.collect{|group| group.title}.join(',').to_s
         puts "user_non_admin.......#{user_non_admin}"
         if (!user_admin.empty? and !user_non_admin.empty?)
-           message = "As admin your groups are #{user_admin} and As a member your groups are #{user_non_admin}"
+          message = "As admin your groups are #{user_admin} and As a member your groups are #{user_non_admin}"
         elsif (user_admin.empty? and !user_non_admin.empty?)
           message = "As a member your groups are #{user_non_admin}, you have not created any group to be an admin"
         elsif(user_non_admin.empty? and !user_admin.empty?)
@@ -71,14 +71,23 @@ class InboundSms < ActiveRecord::Base
         else
           message = "Sorry you are neither an admin nor a member in any of the groups"
         end
-             
+        
       else
         message = USER_DOES_NOT_EXISTS
       end    
       outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => message)
       outbound_sms.queue_sms      
     end
-    
+    def add_nickname(from,message)
+      user = User.exists?(from)   
+      unless user.nil?
+        puts "data given......................#{message}"
+        user_name = parse_group(message)
+        user.name = user_name
+        user.save!
+      end
+      
+    end
     def add_to_inbound_sms(from,message,action)
       inbound_sms = InboundSms.new(:source=> from, :message=> message, :action=> action)
       inbound_sms.save
@@ -111,12 +120,12 @@ class InboundSms < ActiveRecord::Base
       existing_users = User.find(:all,:conditions=>["mobile_no in (?)",mobile_nos])
       existing_mob = existing_users.collect{|user| user.mobile_no}
       new_mob = mobile_nos - existing_mob
-      user = User.form_user(from)[:user]
+      user = User.exists?(from).nil? ? User.form_user(from)[:user] : User.exists?(from)
       new_users = User.form_users(new_mob)
       new_members, invalid_members = User.slice_invalid_users(new_users)
       members = existing_users + new_members
       message_for_existing = "#{from} has invited you to the group #{group_title} #{UNSUB_MESSAGE} #{HELP_MESSAGE}"
-      message_for_new ="#{WELCOME_MESSAGE_MEMBERS} #{from} has invited you to the group #{group_title} #{REPLY_MESSAGE}. #{message_for_existing}"
+      message_for_new ="#{WELCOME_MESSAGE_MEMBERS} #{from} has invited you to the group #{group_title} Reply 'message' to #{SYSTEM_MOBILE_NO} to message everybody in the group. #{message_for_existing}"
       if group.nil?
         inviter_message = GROUP_DOES_NOT_EXISTS
         outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => inviter_message)
@@ -152,13 +161,12 @@ class InboundSms < ActiveRecord::Base
 
   def add_user_to_group(from, group_title, numbers)
     mobile_nos = numbers.split(",")        
-    user = User.form_user(from)[:user]
+    user = User.exists?(from).nil? ? User.form_user(from)[:user] : User.exists?(from)
     existing_users = User.find(:all,:conditions=>["mobile_no in (?)",mobile_nos])
     existing_mob = existing_users.collect{|user| user.mobile_no}
     new_mob = mobile_nos - existing_mob
-    user = User.form_user(from)[:user]
     message_for_existing = "#{from} has invited you to the group #{group_title} #{UNSUB_MESSAGE} #{HELP_MESSAGE}"
-    message_for_new ="#{WELCOME_MESSAGE_MEMBERS} #{from} has invited you to the group #{group_title} #{REPLY_MESSAGE}. #{message_for_existing}"
+    message_for_new ="#{WELCOME_MESSAGE_MEMBERS} #{from} has invited you to the group #{group_title} Reply 'message' to #{SYSTEM_MOBILE_NO} to message everybody in the group. #{message_for_existing}"
     if Group.user_already_created_same_group?(user, group_title)
       message = "You already created a group with name #{group_title}. Creation not possible again"
       user.send_message(message)
