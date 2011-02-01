@@ -44,8 +44,10 @@ class InboundSms < ActiveRecord::Base
           rejoin(from,group_title)
           when "HELP"
           send_keywords_to_user(from)
-          when "group"
+          when "GROUP"
           find_group(from)
+          when "NICK"
+          
         else
           OutboundSms.invalid_format(from)
         end
@@ -55,8 +57,21 @@ class InboundSms < ActiveRecord::Base
     
     def find_group(from)
       user = User.exists?(from)   
-      unless user.nil?          
-                 
+      unless user.nil?
+        user_admin = user.admin_groups.collect{|group| group.title}.join(',').to_s
+        puts "user_admin.......#{user_admin}"
+        user_non_admin = user.non_admin_groups.collect{|group| group.title}.join(',').to_s
+        puts "user_non_admin.......#{user_non_admin}"
+        if (!user_admin.empty? and !user_non_admin.empty?)
+           message = "As admin your groups are #{user_admin} and As a member your groups are #{user_non_admin}"
+        elsif (user_admin.empty? and !user_non_admin.empty?)
+          message = "As a member your groups are #{user_non_admin}, you have not created any group to be an admin"
+        elsif(user_non_admin.empty? and !user_admin.empty?)
+          message = "As admin your groups are #{user_admin} and You are in no group as a member"
+        else
+          message = "Sorry you are neither an admin nor a member in any of the groups"
+        end
+             
       else
         message = USER_DOES_NOT_EXISTS
       end    
