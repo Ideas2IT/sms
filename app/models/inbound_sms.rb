@@ -44,12 +44,24 @@ class InboundSms < ActiveRecord::Base
           rejoin(from,group_title)
           when "HELP"
           send_keywords_to_user(from)
-          
+          when "group"
+          find_group(from)
         else
           OutboundSms.invalid_format(from)
         end
       end
       
+    end
+    
+    def find_group(from)
+      user = User.exists?(from)   
+      unless user.nil?          
+                 
+      else
+        message = USER_DOES_NOT_EXISTS
+      end    
+      outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => message)
+      outbound_sms.queue_sms      
     end
     
     def add_to_inbound_sms(from,message,action)
@@ -231,7 +243,7 @@ class InboundSms < ActiveRecord::Base
   end   
 
   def mute(from,group_title)
-    user = User.exists?(from)    
+    user = User.exists?(from)   
     group=Group.exists?(group_title)
      unless group.nil?          
         membership = group.active_membership(user)

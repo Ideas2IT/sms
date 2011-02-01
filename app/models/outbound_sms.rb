@@ -7,7 +7,7 @@ class OutboundSms < ActiveRecord::Base
   class << self
     
     def invalid_format(mobile_no)
-      error_count = OutboundSms.count(:all,:conditions=>['to_no = ? AND message = ? AND created_at > ?', mobile_no,INVALID_FORMAT,10.minutes.ago]) 
+      error_count = OutboundSms.count(:all,:conditions=>['to_no = ? AND message = ? AND created_at > ?', mobile_no,INVALID_FORMAT,30.minutes.ago]) 
       if error_count<2
         message = ""
         outbound_sms = OutboundSms.new(:from_no => User.system_user.mobile_no, :to_no => mobile_no,:message => INVALID_FORMAT)

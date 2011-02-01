@@ -2,6 +2,8 @@ class User < ActiveRecord::Base
   include_simple_groups
   belongs_to :company
   has_many :groups, :through => :memberships, :conditions => 'accepted_at IS NOT NULL'
+  has_many :admin_groups, :through => :memberships, :conditions => ['admin_role = ? and accepted_at IS NOT NULL',true],:source=>:group
+  has_many :non_admin_groups, :through => :memberships, :conditions => ['admin_role = ? and accepted_at IS NOT NULL',false],:source=>:group
   validates_numericality_of :mobile_no, :message => "Phone No. must be numerals"
       validates_length_of :mobile_no, :is=>10, :message => "is invalid"
   #named_scope :admin, :conditions => ["admin_role = ?", true]
