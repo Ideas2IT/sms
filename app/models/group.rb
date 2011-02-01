@@ -4,6 +4,7 @@ class Group < ActiveRecord::Base
   has_many :members, :through => :memberships, :source => :user, :conditions => 'accepted_at IS NOT NULL'
   has_many :pending_members, :through => :memberships, :source => :user, :conditions => 'accepted_at IS NULL'
   has_many :active_members, :through => :memberships, :source => :user, :conditions => ['mute = ?', false]
+  has_many :inactive_members, :through => :memberships, :source => :user, :conditions => ['mute = ?',true]
   has_many :mods, :through => :memberships, :source => :user, :conditions => ['admin_role = ?', true]
   has_many :active_mods, :through => :memberships, :source => :user, :conditions => ['admin_role = ? AND mute = ?', true, false]
   has_many :inbound_sms 
@@ -130,8 +131,8 @@ class Group < ActiveRecord::Base
     end
     if !from.name.nil? and !from.name.empty?
         message = "[#{from.name}@#{self.title}]:#{message}"
-    else
-        message = "[#{from.mobile_no}@#{self.title}]:#{message}"
+    elsif from.mobile_no!= SYSTEM_MOBILE_NO
+      message = "[#{from.mobile_no}@#{self.title}]:#{message}"
     end
     members.each do |member|
       outbound_sms = OutboundSms.new(:from_no=>from.mobile_no, :to_no=>member.mobile_no, :message=>message, :group=>self)

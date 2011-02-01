@@ -44,10 +44,12 @@ class InboundSms < ActiveRecord::Base
           rejoin(from,group_title)
           when "HELP"
           send_keywords_to_user(from)
-          when "GROUP"
+          when "GROUPS"
           find_group(from)
           when "NICK"
           add_nickname(from,message)
+          when "INACTIVE"
+          get_inactive_members(from,group)
         else
           OutboundSms.invalid_format(from)
         end
@@ -57,27 +59,17 @@ class InboundSms < ActiveRecord::Base
     
     def find_group(from)
       user = User.exists?(from)   
-      unless user.nil?
+      if !user.nil?
         user_admin = user.admin_groups.collect{|group| group.title}.join(',').to_s
-        puts "user_admin.......#{user_admin}"
         user_non_admin = user.non_admin_groups.collect{|group| group.title}.join(',').to_s
-        puts "user_non_admin.......#{user_non_admin}"
-        if (!user_admin.empty? and !user_non_admin.empty?)
-          message = "As admin your groups are #{user_admin} and As a member your groups are #{user_non_admin}"
-        elsif (user_admin.empty? and !user_non_admin.empty?)
-          message = "As a member your groups are #{user_non_admin}, you have not created any group to be an admin"
-        elsif(user_non_admin.empty? and !user_admin.empty?)
-          message = "As admin your groups are #{user_admin} and You are in no group as a member"
-        else
-          message = "Sorry you are neither an admin nor a member in any of the groups"
-        end
-        
+        message = "As admin your groups are #{user_admin} and As a member your groups are #{user_non_admin},You have created #{user_admin}, You are member of #{user_non_admin}."
       else
         message = USER_DOES_NOT_EXISTS
       end    
       outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => message)
       outbound_sms.queue_sms      
     end
+    
     def add_nickname(from,message)
       user = User.exists?(from)   
       unless user.nil?
@@ -85,9 +77,31 @@ class InboundSms < ActiveRecord::Base
         user_name = parse_group(message)
         user.name = user_name
         user.save!
+        message = "Nick name successfully added"
       end
-      
+      outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => message)
+      outbound_sms.queue_sms
     end
+    
+    def get_inactive_members(from,group)
+      user = User.exists?(from)   
+      unless user.nil?
+        if !group.nil?
+          inactive_members = group.inactive_members.collect{|user| user.mobile_no}.join(',').to_s
+          if inactive_members.empty?
+            message = "There are no inactive members in your group"
+          else
+            message = "Inactive members of the group #{group.title} are #{inactive_members}"        
+          end
+        else
+           message = "please enter valid group name"
+        end
+       
+      end
+       outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => message)
+       outbound_sms.queue_sms
+    end
+    
     def add_to_inbound_sms(from,message,action)
       inbound_sms = InboundSms.new(:source=> from, :message=> message, :action=> action)
       inbound_sms.save
