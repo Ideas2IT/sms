@@ -125,7 +125,7 @@ class InboundSms < ActiveRecord::Base
       new_members, invalid_members = User.slice_invalid_users(new_users)
       members = existing_users + new_members
       message_for_existing = "#{from} has invited you to the group #{group_title} #{UNSUB_MESSAGE} #{HELP_MESSAGE}"
-      message_for_new ="#{WELCOME_MESSAGE_MEMBERS} #{from} has invited you to the group #{group_title} Reply 'message' to #{SYSTEM_MOBILE_NO} to message everybody in the group. #{message_for_existing}"
+      message_for_new ="#{WELCOME_MESSAGE_MEMBERS} #{from} has invited you to the group #{group_title} Reply message to #{SYSTEM_MOBILE_NO} to message everybody in the group. #{message_for_existing}"
       if group.nil?
         inviter_message = GROUP_DOES_NOT_EXISTS
         outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => inviter_message)
@@ -166,7 +166,7 @@ class InboundSms < ActiveRecord::Base
     existing_mob = existing_users.collect{|user| user.mobile_no}
     new_mob = mobile_nos - existing_mob
     message_for_existing = "#{from} has invited you to the group #{group_title} #{UNSUB_MESSAGE} #{HELP_MESSAGE}"
-    message_for_new ="#{WELCOME_MESSAGE_MEMBERS} #{from} has invited you to the group #{group_title} Reply 'message' to #{SYSTEM_MOBILE_NO} to message everybody in the group. #{message_for_existing}"
+    message_for_new ="#{WELCOME_MESSAGE_MEMBERS} #{from} has invited you to the group #{group_title} Reply message to #{SYSTEM_MOBILE_NO} to message everybody in the group. #{message_for_existing}"
     if Group.user_already_created_same_group?(user, group_title)
       message = "You already created a group with name #{group_title}. Creation not possible again"
       user.send_message(message)
