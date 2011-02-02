@@ -167,7 +167,8 @@ class Group < ActiveRecord::Base
   def mute_membership(membership)
     unless membership.nil?
       membership.mute=true
-      membership.save
+      membership.muted_at=Time.now
+      membership.save!
     end
   end
   

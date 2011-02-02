@@ -54,7 +54,7 @@ class InboundSms < ActiveRecord::Base
           when "INACTIVE"
           get_inactive_members(from,group)
           when "HISTORY"
-          get_history_of_muted_user(from,group)
+          get_history_when_user_in_mute(from,group_title)
         else
           OutboundSms.invalid_format(from)
         end
@@ -62,6 +62,41 @@ class InboundSms < ActiveRecord::Base
       
     end
     
+    def get_history_when_user_in_mute(from,group_title)
+      group = Group.exists?(group_title)
+      user = User.exists?(from)
+      if !user.nil? and !group.nil?
+        if group.has_member?(user)
+          membership = group.active_membership(user)
+          unless membership.muted_at.nil?
+            if membership.muted_at < 1.day.ago
+              inbound = find(:all,:conditions=>['action_id = ? and group_id = ? AND DATE_FORMAT(created_at,"%m/%d/%y") = ? ',3,group.id,Time.now.strftime('%D')])
+            else
+              inbound = find(:all,:conditions=>['action_id = ? and group_id = ? AND created_at > ?',3,group.id,membership.muted_at])
+            end
+            process_and_send_messages(from,inbound)   
+          else
+            message="You never muted the group #{group_title}. You are not authorized to ask history"        
+          end
+        else
+          message = "You are not authorized to ask history"
+        end
+      else      
+        message = user.nil? ? "Sorry. You are not authorized to ask history" : GROUP_DOES_NOT_EXISTS      
+      end
+      unless message.nil?
+        outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => message)
+        outbound_sms.queue_sms       
+      end
+    end
+    
+    def process_and_send_messages(from,inbounds)
+       inbounds.each do |inbound|
+         data = parse_data(inbound.message, 1)
+         outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => inbound.source, :message => data)
+         outbound_sms.queue_sms
+       end
+    end
     def find_group(from)
       user = User.exists?(from)   
       if !user.nil?
@@ -105,12 +140,7 @@ class InboundSms < ActiveRecord::Base
       outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => message)
       outbound_sms.queue_sms
     end
-    def get_history_of_muted_user(from,group)
-      user = User.exists?(from)
-      unless user.nil?
-        
-      end
-    end
+    
     def add_to_inbound_sms(from,message,action=nil,group=nil)
       if !group.nil? 
         inbound_sms = InboundSms.new(:source=> from, :message=> message, :action=> action, :group_id=>group.id)
