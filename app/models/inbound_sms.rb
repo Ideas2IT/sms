@@ -12,18 +12,21 @@ class InboundSms < ActiveRecord::Base
       action = Action.find_by_keyword(action_keyword)  
       group_title = parse_group(message)
       group = Group.exists?(group_title) unless group_title.nil?
-      add_to_inbound_sms(from,message,action)      
       if action.nil? 
         if group.nil? 
-          group =  Group.exists?(action_keyword)        
-          unless group.nil?          
+          group =  Group.exists?(action_keyword) 
+          temp_action = Action.find_by_keyword("msg")
+          if !group.nil?
+            add_to_inbound_sms(from,message,temp_action,group)
             data = parse_data(message, 1)
             send_message_to_group(from, action_keyword, data)
           else
             OutboundSms.invalid_format(from)
+            add_to_inbound_sms(from,message)
           end      
         end
       else
+        add_to_inbound_sms(from,message,action,group) 
         data = parse_data(message) 
         case action.name
           when "LIST_ALL_USERS"
@@ -50,6 +53,8 @@ class InboundSms < ActiveRecord::Base
           add_nickname(from,message)
           when "INACTIVE"
           get_inactive_members(from,group)
+          when "HISTORY"
+          get_history_of_muted_user(from,group)
         else
           OutboundSms.invalid_format(from)
         end
@@ -73,7 +78,6 @@ class InboundSms < ActiveRecord::Base
     def add_nickname(from,message)
       user = User.exists?(from)   
       unless user.nil?
-        puts "data given......................#{message}"
         user_name = parse_group(message)
         user.name = user_name
         user.save!
@@ -94,16 +98,25 @@ class InboundSms < ActiveRecord::Base
             message = "Inactive members of the group #{group.title} are #{inactive_members}"        
           end
         else
-           message = "please enter valid group name"
+          message = "please enter valid group name"
         end
-       
+        
       end
-       outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => message)
-       outbound_sms.queue_sms
+      outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => message)
+      outbound_sms.queue_sms
     end
-    
-    def add_to_inbound_sms(from,message,action)
-      inbound_sms = InboundSms.new(:source=> from, :message=> message, :action=> action)
+    def get_history_of_muted_user(from,group)
+      user = User.exists?(from)
+      unless user.nil?
+        
+      end
+    end
+    def add_to_inbound_sms(from,message,action=nil,group=nil)
+      if !group.nil? 
+        inbound_sms = InboundSms.new(:source=> from, :message=> message, :action=> action, :group_id=>group.id)
+      else
+        inbound_sms = InboundSms.new(:source=> from, :message=> message)
+      end
       inbound_sms.save
     end
     

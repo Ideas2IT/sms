@@ -24,9 +24,9 @@ end
 
 def load_actions
   logger = Logger.new STDOUT
-  name_arr=['ADD_USER_TO_GROUP_FROM_ADMIN','LIST_ALL_USERS','SEND_MESSAGE_TO_GROUP','MUTE','REJOIN','INVITE_USERS_TO_GROUP','UNSUBSCRIBE','REMOVE','HELP','GROUPS','NICK','INACTIVE']
-  description_arr=['Creating a new Group','Listing Users of a Group ','Messages sent by users of a Group','Temporary Disconnection','Joining after temporary Disconnection','Inviting Users to join in to a Group','Removing a User from a Group','Removing a group from Subscription','suggests user with the list of available keyword','lists the groups which the user is a member of','nick name of the user','lists the muted members of the group']
-  keywords_arr=['add','list','msg','mute','rejoin','invite','unsub','rmv','help','groups','nick','inactive']
+  name_arr=['ADD_USER_TO_GROUP_FROM_ADMIN','LIST_ALL_USERS','SEND_MESSAGE_TO_GROUP','MUTE','REJOIN','INVITE_USERS_TO_GROUP','UNSUBSCRIBE','REMOVE','HELP','GROUPS','NICK','INACTIVE','HISTORY']
+  description_arr=['Creating a new Group','Listing Users of a Group ','Messages sent by users of a Group','Temporary Disconnection','Joining after temporary Disconnection','Inviting Users to join in to a Group','Removing a User from a Group','Removing a group from Subscription','suggests user with the list of available keyword','lists the groups which the user is a member of','nick name of the user','lists the muted members of the group','messages that a muted user did not receive are sent' ]
+  keywords_arr=['add','list','msg','mute','rejoin','invite','unsub','rmv','help','groups','nick','inactive','history']
   keywords_arr.each_with_index do |keyword,i|
   action = Action.find_by_keyword(keyword)
     if action.nil?
