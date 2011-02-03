@@ -4,10 +4,11 @@ class InboundSms < ActiveRecord::Base
   
   belongs_to :group 
   belongs_to :action
+  belongs_to :user
   class << self
     
     def parse_incoming_sms(from, message)
-      #user = User.find_by_mobile_no(from)
+      user = User.find_by_mobile_no(from)
       action_keyword = parse_action(message)
       action = Action.find_by_keyword(action_keyword)  
       group_title = parse_group(message)
@@ -17,16 +18,16 @@ class InboundSms < ActiveRecord::Base
           group =  Group.exists?(action_keyword) 
           temp_action = Action.find_by_keyword("msg")
           if !group.nil?
-            add_to_inbound_sms(from,message,temp_action,group)
+            add_to_inbound_sms(from,message,user,temp_action,group)
             data = parse_data(message, 1)
             send_message_to_group(from, action_keyword, data)
           else
             OutboundSms.invalid_format(from)
-            add_to_inbound_sms(from,message)
+            add_to_inbound_sms(from,message,user)
           end      
         end
       else
-        add_to_inbound_sms(from,message,action,group) 
+        add_to_inbound_sms(from,message,user,action,group) 
         data = parse_data(message) 
         case action.name
           when "LIST_ALL_USERS"
@@ -68,16 +69,21 @@ class InboundSms < ActiveRecord::Base
       if !user.nil? and !group.nil?
         if group.has_member?(user)
           membership = group.active_membership(user)
+          if !membership.nil?
           unless membership.muted_at.nil?
             if membership.muted_at < 1.day.ago
-              inbound = find(:all,:conditions=>['action_id = ? and group_id = ? AND DATE_FORMAT(created_at,"%m/%d/%y") = ? ',3,group.id,Time.now.strftime('%D')])
+              inbound = find(:all,:conditions=>['action_id = ? and group_id = ? AND DATE_FORMAT(created_at,"%m/%d/%y") = ? ',3,group.id,Time.now.strftime('%D')],:include=>:user)
             else
-              inbound = find(:all,:conditions=>['action_id = ? and group_id = ? AND created_at > ?',3,group.id,membership.muted_at])
+              inbound = find(:all,:conditions=>['action_id = ? and group_id = ? AND created_at > ?',3,group.id,membership.muted_at],:include=>:user)
             end
-            process_and_send_messages(from,inbound)   
+            process_and_send_messages(from,inbound,group.title)   
           else
             message="You never muted the group #{group_title}. You are not authorized to ask history"        
           end
+        else
+          message = "You are not an active member to ask history. Try after rejoin"
+        end
+        
         else
           message = "You are not authorized to ask history"
         end
@@ -90,10 +96,11 @@ class InboundSms < ActiveRecord::Base
       end
     end
     
-    def process_and_send_messages(from,inbounds)
+    def process_and_send_messages(from,inbounds,group_title)
        inbounds.each do |inbound|
          data = parse_data(inbound.message, 1)
-         outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => inbound.source, :message => data)
+         data = "[#{inbound.user.name.nil? ? inbound.source : inbound.user.name}@#{group_title}]:#{data}"
+         outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => data)
          outbound_sms.queue_sms
        end
     end
@@ -141,12 +148,11 @@ class InboundSms < ActiveRecord::Base
       outbound_sms.queue_sms
     end
     
-    def add_to_inbound_sms(from,message,action=nil,group=nil)
-      if !group.nil? 
-        inbound_sms = InboundSms.new(:source=> from, :message=> message, :action=> action, :group_id=>group.id)
-      else
-        inbound_sms = InboundSms.new(:source=> from, :message=> message)
-      end
+    def add_to_inbound_sms(from,message,user=nil,action=nil,group=nil)
+      inbound_sms = InboundSms.new(:source=> from, :message=> message)
+      inbound_sms.group = group unless group.nil?
+      inbound_sms.user = user unless user.nil?
+      inbound_sms.action = action unless action.nil?
       inbound_sms.save
     end
     
