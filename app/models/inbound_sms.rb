@@ -70,20 +70,20 @@ class InboundSms < ActiveRecord::Base
         if group.has_member?(user)
           membership = group.active_membership(user)
           if !membership.nil?
-          unless membership.muted_at.nil?
-            if membership.muted_at < 1.day.ago
-              inbound = find(:all,:conditions=>['action_id = ? and group_id = ? AND DATE_FORMAT(created_at,"%m/%d/%y") = ? ',3,group.id,Time.now.strftime('%D')],:include=>:user)
+            unless membership.muted_at.nil?
+              if membership.muted_at < 1.day.ago
+                inbound = find(:all,:conditions=>['action_id = ? and group_id = ? AND DATE_FORMAT(created_at,"%m/%d/%y") = ? AND user_id <> ?',3,group.id,Time.now.strftime('%D'),user.id],:include=>:user)
+              else
+                inbound = find(:all,:conditions=>['action_id = ? and group_id = ? AND created_at > ? AND user_id <> ?',3,group.id,membership.muted_at,user.id],:include=>:user)
+              end
+              process_and_send_messages(from,inbound,group.title)   
             else
-              inbound = find(:all,:conditions=>['action_id = ? and group_id = ? AND created_at > ?',3,group.id,membership.muted_at],:include=>:user)
+              message="You never muted the group #{group_title}. You are not authorized to ask history"        
             end
-            process_and_send_messages(from,inbound,group.title)   
           else
-            message="You never muted the group #{group_title}. You are not authorized to ask history"        
+            message = "You are not an active member to ask history. Try after rejoin"
           end
-        else
-          message = "You are not an active member to ask history. Try after rejoin"
-        end
-        
+          
         else
           message = "You are not authorized to ask history"
         end
@@ -97,12 +97,12 @@ class InboundSms < ActiveRecord::Base
     end
     
     def process_and_send_messages(from,inbounds,group_title)
-       inbounds.each do |inbound|
-         data = parse_data(inbound.message, 1)
-         data = "[#{inbound.user.name.nil? ? inbound.source : inbound.user.name}@#{group_title}]:#{data}"
-         outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => data)
-         outbound_sms.queue_sms
-       end
+      inbounds.each do |inbound|
+        data = parse_data(inbound.message, 1)
+        data = "[#{inbound.user.name.nil? ? inbound.source : inbound.user.name}@#{group_title}]:#{data}"
+        outbound_sms = OutboundSms.new(:from_no => SYSTEM_MOBILE_NO, :to_no => from, :message => data)
+        outbound_sms.queue_sms
+      end
     end
     def find_group(from)
       user = User.exists?(from)   
@@ -179,8 +179,14 @@ class InboundSms < ActiveRecord::Base
     
     def invite_users_to_group(from, group_title, numbers)
       mobile_nos = numbers.split(",")
+      mobile_nos.each_with_index do |mobile_no, i|
+        mobile_nos[i] = User.validate_mobile_nos(mobile_no)
+        puts "mobile....#{mobile_no}"
+      end
+      puts "mobile nos.....#{mobile_nos.inspect}"
       group = Group.exists?(group_title)    
       existing_users = User.find(:all,:conditions=>["mobile_no in (?)",mobile_nos])
+      
       existing_mob = existing_users.collect{|user| user.mobile_no}
       new_mob = mobile_nos - existing_mob
       user = User.exists?(from).nil? ? User.form_user(from)[:user] : User.exists?(from)
@@ -200,7 +206,9 @@ class InboundSms < ActiveRecord::Base
             if !members.nil? and !members.empty?
               inviter_message = "The valid numbers you provided were added to the group #{group_title} successfully"
               group.add_members(members)
-              group.send_message(message_for_existing, User.system_user, existing_users)
+              if existing_members.nil? and existing_members.empty?
+                group.send_message(message_for_existing, User.system_user, existing_users)
+              end
               group.send_message(message_for_new, User.system_user, new_members)
             end
           end
@@ -223,7 +231,11 @@ class InboundSms < ActiveRecord::Base
   end
 
   def add_user_to_group(from, group_title, numbers)
-    mobile_nos = numbers.split(",")        
+    mobile_nos = numbers.split(",")
+     mobile_nos.each_with_index do |mobile_no, i|
+        mobile_nos[i] = User.validate_mobile_nos(mobile_no)
+        puts "mobile....#{mobile_no}"
+      end
     user = User.exists?(from).nil? ? User.form_user(from)[:user] : User.exists?(from)
     existing_users = User.find(:all,:conditions=>["mobile_no in (?)",mobile_nos])
     existing_mob = existing_users.collect{|user| user.mobile_no}
@@ -258,7 +270,9 @@ class InboundSms < ActiveRecord::Base
       end
       if !members.nil? and !members.empty?
         group.contact_admin(admin_message)
-        group.send_message(message_for_existing, User.system_user, existing_users)
+        if existing_members.nil? and existing_members.empty?
+          group.send_message(message_for_existing, User.system_user, existing_users)
+        end
         group.send_message(message_for_new, User.system_user, new_members)
       end
       if !invalid_members.nil? and !invalid_members.empty?

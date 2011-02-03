@@ -11,11 +11,29 @@ class User < ActiveRecord::Base
   #named_scope :system_user, :conditions => ["id = ?", 1]
   
  class << self
-   
+   def validate_mobile_nos(mobile)
+     digits = mobile.size
+      if digits==11
+        mobile = mobile[-10..-1] if mobile[0]=="0"
+      elsif digits==12
+        mobile = mobile[-10..-1] if mobile[0..1]=="91"
+      elsif digits==13
+        mobile = mobile[-10..-1] if mobile[0..2]=="+91"
+    end
+    mobile
+   end
    def system_user
      find_by_mobile_no(SYSTEM_MOBILE_NO)
    end
    def exists?(mobile)
+     digits = mobile.size
+      if digits==11
+        mobile = mobile[-10..-1] if mobile[0]=="0"
+      elsif digits==12
+        mobile = mobile[-10..-1] if mobile[0..1]=="91"
+      elsif digits==13
+        mobile = mobile[-10..-1] if mobile[0..2]=="+91"
+      end
      find_by_mobile_no(mobile)
    end
    
@@ -33,6 +51,14 @@ class User < ActiveRecord::Base
    end
    
    def form_user(mobile_no)
+      digits = mobile_no.size
+      if digits==11
+        mobile_no = mobile_no[-10..-1] if mobile_no[0]=="0"
+      elsif digits==12
+        mobile_no = mobile_no[-10..-1] if mobile_no[0..1]=="91"
+      elsif digits==13
+        mobile_no = mobile_no[-10..-1] if mobile_no[0..2]=="+91"
+      end
 #     user = User.find_by_mobile_no(mobile_no, :conditions => ['company_id = ?', Thread.current[:current_company].id])
 #     if user.nil?
        user = User.new(:mobile_no => mobile_no, :company=>Thread.current[:current_company])
