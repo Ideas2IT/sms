@@ -83,7 +83,6 @@ class InboundSms < ActiveRecord::Base
           else
             message = "You are not an active member to ask history. Try after rejoin"
           end
-          
         else
           message = "You are not authorized to ask history"
         end
@@ -206,7 +205,7 @@ class InboundSms < ActiveRecord::Base
             if !members.nil? and !members.empty?
               inviter_message = "The valid numbers you provided were added to the group #{group_title} successfully"
               group.add_members(members)
-              if existing_members.nil? and existing_members.empty?
+              if existing_members.nil? or existing_members.empty?
                 group.send_message(message_for_existing, User.system_user, existing_users)
               end
               group.send_message(message_for_new, User.system_user, new_members)
@@ -270,7 +269,7 @@ class InboundSms < ActiveRecord::Base
       end
       if !members.nil? and !members.empty?
         group.contact_admin(admin_message)
-        if existing_members.nil? and existing_members.empty?
+        if existing_members.nil? or existing_members.empty?
           group.send_message(message_for_existing, User.system_user, existing_users)
         end
         group.send_message(message_for_new, User.system_user, new_members)
